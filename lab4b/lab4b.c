@@ -165,13 +165,13 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  /*mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
+  mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
   if(gpio_g115==NULL)
   {
     fprintf(stderr, "Cannot init GPIO_115, try running as root or verify grove connection\n");
     exit(1);
   }
-  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);*/
+  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);
 
 
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{STDIN_FILENO,POLLIN,0}};
@@ -187,6 +187,8 @@ int main(int argc, char *argv[])
   int i;
   while(running==1)
   {
+    if(mraa_gpio_read(gpio_g115)==1)
+      shutdown();
     int pollResult = poll(pollingArr, 2, 0);
     checkForError(pollResult, "polling");
     if(pollResult>0)
@@ -199,7 +201,7 @@ int main(int argc, char *argv[])
         checkForError(time(&rawtime),"getting raw time");
         struct tm *locTime=localtime(&rawtime);
         char writeBuf[50];
-        sprintf(writeBuf, "%02d:%02d:%02d %.1f %d\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0), 0);//mraa_gpio_read(gpio_g115));
+        sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0));
         if(stopped==0)
         {
           checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
@@ -237,6 +239,6 @@ int main(int argc, char *argv[])
     checkForError(close(logfd), "closing logfile");
   free(parseBuf);
   mraa_aio_close(adc_a0);
-  //mraa_gpio_close(gpio_g115);
+  mraa_gpio_close(gpio_g115);
   return 0;
 }
