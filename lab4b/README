@@ -1,3 +1,19 @@
 NAME: Michael Wu
 EMAIL: cheeserules43@gmail.com
 ID: 404751542
+
+This submission includes:
+
+lab4b.c: Source code that runs on a beagleboard green wireless with a
+base cape attached. It assumes a temperature sensor is attached to
+AIN0 and a button is attached to GPIO_115. It uses a timer to output
+the temperature at a regular period. Can specify period in seconds
+with --period=N and the temperature scale in either Celsius or
+Fahrenheit with --scale=C|F. Can log output to a file with
+--log=FILE. Default parameters are period=1 and scale=F. Run as root
+if the beagleboard cannot init AIN0 or GPIO_115. During execution it
+takes the commands START, STOP, PERIOD=N, SCALE=C|F, and OFF.
+
+Makefile: Builds the executable lab4b as a default target. Includes
+standard targets make dist and make clean. Make check runs the lab4b
+executable and tests the above features.
