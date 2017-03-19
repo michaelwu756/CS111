@@ -119,6 +119,21 @@ double getTempReading(mraa_aio_context aioFd)
   return result;
 }
 
+void generateReport(mraa_aio_context aioFd)
+{
+  time_t rawtime;
+  checkForError(time(&rawtime),"getting raw time");
+  struct tm *locTime=localtime(&rawtime);
+  char writeBuf[50];
+  sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(aioFd));
+  if(stopped==0)
+  {
+    checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+    if(logfd!=-1)
+      checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+  }
+}
+
 int main(int argc, char *argv[])
 {
   static struct option long_options[] =
@@ -164,6 +179,7 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Cannot init AIN0, try running as root or verify grove connection\n");
     exit(1);
   }
+  generateReport(adc_a0);
 
   mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
   if(gpio_g115==NULL)
@@ -197,17 +213,7 @@ int main(int argc, char *argv[])
       {
         char readBuf[256];
         checkForError(read(timerfd, readBuf, O_NONBLOCK), "reading timerfd");
-        time_t rawtime;
-        checkForError(time(&rawtime),"getting raw time");
-        struct tm *locTime=localtime(&rawtime);
-        char writeBuf[50];
-        sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0));
-        if(stopped==0)
-        {
-          checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
-          if(logfd!=-1)
-            checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
-        }
+	generateReport(adc_a0);
       }
       if(pollingArr[1].revents & POLLIN)
       {

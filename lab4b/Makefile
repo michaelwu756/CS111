@@ -1,5 +1,7 @@
+CFLAGS=-lmraa -lm -Wall -Wextra
+
 lab4b: lab4b.c
-	gcc -lmraa -lm $^ -o $@
+	gcc $(CFLAGS) $^ -o $@
 
 .PHONY: clean dist check
 
