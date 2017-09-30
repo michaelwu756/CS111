@@ -13,6 +13,12 @@ void segFaultHandler(int sig)
   exit(4);
 }
 
+void segfault()
+{
+  char* faultPtr = NULL;
+  *faultPtr='a';
+}
+
 int main(int argc, char* argv[])
 {
   
@@ -68,8 +74,7 @@ int main(int argc, char* argv[])
 
   if(fault)
   {
-    char* faultPtr = NULL;
-    *faultPtr='a';
+    segfault();
   }
   while(read(0, &c, 1)!=0)
   {
