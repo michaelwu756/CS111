@@ -4,11 +4,13 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <fcntl.h>
+#include <string.h>
+#include <errno.h>
 
 void segFaultHandler(int sig)
 {
-  fprintf(stderr, "handled segfault");
-  exit(3);
+  fprintf(stderr, "signal %i handled segfault\n", sig);
+  exit(4);
 }
 
 int main(int argc, char* argv[])
@@ -24,27 +26,32 @@ int main(int argc, char* argv[])
     {0, 0, 0, 0}
   };
 
-  int fd0=0;
-  int fd1=1;
+  int fd=0;
   int fault=0;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(c){
       case 'i':
-	fd0=open(optarg, O_RDONLY);
-	if(fd0==-1)
+	fd=open(optarg, O_RDONLY);
+	if(fd==-1)
 	{
-	  perror("Error");
-	  exit(1);
+	  fprintf(stderr, "Input file %s error: %s\n", optarg, strerror(errno));
+	  exit(2);
 	}
+	close(0);
+	dup(fd);
+	close(fd);
 	break;
       case 'o':
-	fd1=open(optarg, O_WRONLY|O_CREAT);
-	if(fd1==-1)
+	fd=open(optarg, O_WRONLY|O_CREAT);
+	if(fd==-1)
         {
-          perror("Error");
-          exit(2);
+	  fprintf(stderr, "Output file %s error: %s\n", optarg, strerror(errno));
+          exit(3);
         }
+	close(1);
+	dup(fd);
+	close(fd);
 	break;
       case 's':
 	fault=1;
@@ -52,6 +59,9 @@ int main(int argc, char* argv[])
       case 'c':
 	signal(SIGSEGV, segFaultHandler);
 	break;
+      default:
+	fprintf(stderr, "Usage: lab0 [--input=FILE --output=FILE --segfault --catch]\n");
+	exit(1);
     }
   }
 
@@ -61,9 +71,11 @@ int main(int argc, char* argv[])
     char* faultPtr = NULL;
     *faultPtr='a';
   }
-  while(read(fd0, &c, 1)!=0)
+  while(read(0, &c, 1)!=0)
   {
-    write(fd1, &c, 1);
+    int numWritten = 0;
+    while(numWritten!=1)
+      numWritten=write(1, &c, 1);
   }
   exit(0);
 }
