@@ -2,4 +2,22 @@ NAME: Michael Wu
 EMAIL: cheeserules43@gmail.com
 ID: 404751542
 
-l/r/aleuasonethusao
+lab0.c is the source file. It is a program that copies standard input to standard output.
+Use the --input=FILE option to replace standard input with the specified file.
+Use the --output=FILE option to replace standart output with the specified file.
+Use the --segfault option to trigger a segfault.
+Use the --catch option to register a signal handler for segfaults.
+
+backtrace.png contains a screen shot of gdb when investigating the backtrace after the segfault.
+
+breakpoint.png contains a screen shot of gdb showing that the segfault is caused by dereferencing a null pointer.
+
+The Makefile lets you create the executable lab0, as well as run make clean, make check, and make dist.
+
+make check runs a quick test which first test that lab0 can copy standard input to standard output faithfully,
+then it tests that both the --input and --output options work, then it checks that it segfaults correctly, catches
+the segfault correctly, and handles incorrect arguments correctly. Thus it tests all the options for lab0.
+
+make dist creates a submittable tar file for lab0.
+
+make clean restores a clean lab0 directory.

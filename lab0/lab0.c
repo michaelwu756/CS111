@@ -60,7 +60,7 @@ int main(int argc, char* argv[])
 	signal(SIGSEGV, segFaultHandler);
 	break;
       default:
-	fprintf(stderr, "Usage: lab0 [--input=FILE --output=FILE --segfault --catch]\n");
+	fprintf(stderr, "Usage: %s [--input=FILE --output=FILE --segfault --catch]\n", argv[0]);
 	exit(1);
     }
   }
