@@ -49,7 +49,7 @@ int main(int argc, char* argv[])
 	close(fd);
 	break;
       case 'o':
-	fd=open(optarg, O_WRONLY|O_CREAT);
+	fd=open(optarg, O_WRONLY|O_CREAT, S_IRWXU|S_IRWXG|S_IRWXO);
 	if(fd==-1)
         {
 	  fprintf(stderr, "Output file %s error: %s\n", optarg, strerror(errno));
