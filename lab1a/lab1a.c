@@ -13,7 +13,6 @@ void resetTerminal()
 
 int main(int argc, char *argv[])
 {
-
   if(tcgetattr(STDIN_FILENO, &originalTerminalAttributes)<0)
   {
     fprintf(stderr, "Error getting terminal attributes: %s", strerror(errno));
@@ -36,8 +35,24 @@ int main(int argc, char *argv[])
   char buf[10];
   int numRead;
 
-  while((numRead = read(STDIN_FILENO, buf, 10))>=0)
+  while((numRead = read(STDIN_FILENO, buf, 10))>0)
   {
-    write(STDOUT_FILENO, buf, numRead);
+    int i;
+    for(i=0; i<numRead; i++)
+    {
+      char c = buf[i];
+      int numWritten=0;
+      if(c=='\004')
+	exit(0);
+      else if(c=='\r' || c=='\n')
+	do{
+	  numWritten+=write(STDOUT_FILENO, "\r\n", 2);
+	}while(numWritten!=2);
+      else
+	do{
+	  numWritten+=write(STDOUT_FILENO, &c, 1);
+	}while(numWritten!=1);
+    }
   }
+  return 0;
 }
