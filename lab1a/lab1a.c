@@ -7,6 +7,7 @@
 #include<sys/types.h>
 #include<getopt.h>
 #include<poll.h>
+#include<signal.h>
 
 struct termios originalTerminalAttributes;
 void resetTerminal()
@@ -105,8 +106,16 @@ int main(int argc, char *argv[])
 	  for(i=0; i<numRead; i++)
 	  {
 	    char c = buf[i];
-	    if(c=='\004')
-	      exit(0);
+	    if (c=='\003')
+	    {
+	      checkForError(kill(childpid, SIGINT), "killing shell");
+	      checkForError(write(STDOUT_FILENO, "^C", 2), "writing from keyboard to stdout");
+	    }
+	    else if(c=='\004')
+	    {
+	      checkForError(write(STDOUT_FILENO, "^D", 2), "writing from keyboard to stdout");
+	      checkForError(close(pipefd[1]), "closing pipefd[1]");
+	    }
 	    else if (c=='\r' || c=='\n')
 	    {
 	      checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
