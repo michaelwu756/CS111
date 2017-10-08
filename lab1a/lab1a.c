@@ -167,7 +167,7 @@ int main(int argc, char *argv[])
 	else if(c=='\r' || c=='\n')
 	  checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing to screen");
 	else
-	  checkForError(write(STDOUT_FILENO, &c, 2), "writing to screen");
+	  checkForError(write(STDOUT_FILENO, &c, 1), "writing to screen");
       }
     }
   }
