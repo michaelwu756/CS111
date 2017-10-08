@@ -1,3 +1,13 @@
 NAME: Michael Wu
 EMAIL: cheeserules43@gmail.com
 ID: 404751542
+
+This submission includes:
+
+lab1a.c - source file for the project that can be compiled into an executable
+that echos out input. If run with the --shell option then the program creates a
+child shell that it pipes the keyboard input to. Exiting is achieved by either
+doing ^D or ^C.
+
+Makefile - contains targets for make clean, dist, and all to compile the
+program.
