@@ -5,11 +5,22 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/types.h>
+#include<getopt.h>
+#include<poll.h>
 
 struct termios originalTerminalAttributes;
 void resetTerminal()
 {
   tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes);
+}
+
+void checkForError(int result, char* message)
+{
+  if(result==-1)
+  {
+    fprintf(stderr, "Error %s: %s", message, strerror(errno));
+    exit(1);
+  }
 }
 
 int main(int argc, char *argv[])
@@ -26,40 +37,33 @@ int main(int argc, char *argv[])
   pid_t childpid=0;
   while((opt=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
-    switch(c){
+    switch(opt){
       case 's':
-	if(pipe(pipefd)==-1)
-	{
-	  fprintf(stderr, "Error making pipe 1: %s", strerror(errno));
-	  exit(1);
-        }
-	if(pipe(pipe2fd)==-1)
-	{
-	  fprintf(stderr, "Error making pipe 2: %s", strerror(errno));
-	  exit(1);
-        }
+	checkForError(pipe(pipefd), "making pipe 1");
+	checkForError(pipe(pipe2fd), "making pipe 2");
+	
 	pid_t pid=fork();
-	if(pid==-1)
+	checkForError(pid, "forking");
+	if(pid==0)
 	{
-	  fprintf(stderr, "Error forking: %s", strerror(errno));
-	  exit(1);
-	}
-	else if(pid==0)
-	{
-	  close(STDIN_FILENO);
-	  dup(pipefd[0]);
-	  close(pipefd[0]);
-	  close(pipefd[1]);
+	  checkForError(close(STDIN_FILENO), "closing stdin");
+	  checkForError(dup(pipefd[0]), "duplicating pipefd[0]");
+	  checkForError(close(pipefd[0]), "closing pipefd[0]");
+	  checkForError(close(pipefd[1]), "closing pipefd[1]");
 
-	  close(STDOUT_FILENO);
-	  dup(pipe2fd[1]);
-	  close(pipe2fd[0]);
-	  close(pipe2fd[1]);
+	  checkForError(close(STDOUT_FILENO), "closing stdout");
+	  checkForError(close(STDERR_FILENO), "closing stderr");
+	  checkForError(dup(pipe2fd[1]), "duplicating pipe2fd[1]");
+	  checkForError(dup(pipe2fd[1]), "duplicating pipe2fd[1]");
+	  checkForError(close(pipe2fd[0]), "closing pipe2fd[0]");
+	  checkForError(close(pipe2fd[1]), "closing pipe2fd[1]");
+
+	  checkForError(execl("/bin/bash", "/bin/bash", (char*) NULL), "executing");
 	}
 	else
         {
-	  close(pipefd[0]);
-	  close(pipe2fd[1]);
+	  checkForError(close(pipefd[0]), "closing pipefd[0]");
+	  checkForError(close(pipe2fd[1]), "closing pipe2fd[1]");
 	  childpid=pid;
         }
 	break;
@@ -69,11 +73,7 @@ int main(int argc, char *argv[])
     }
   }
   
-  if(tcgetattr(STDIN_FILENO, &originalTerminalAttributes)<0)
-  {
-    fprintf(stderr, "Error getting terminal attributes: %s", strerror(errno));
-    exit(1);
-  }
+  checkForError(tcgetattr(STDIN_FILENO, &originalTerminalAttributes), "getting terminal attributes");
   atexit(resetTerminal);
 
   struct termios newTerminalAttributes=originalTerminalAttributes;
@@ -82,32 +82,75 @@ int main(int argc, char *argv[])
   newTerminalAttributes.c_oflag=0;
   newTerminalAttributes.c_lflag=0;
 
-  if(tcsetattr(STDIN_FILENO, TCSANOW, &newTerminalAttributes)<0)
-  {
-    fprintf(stderr, "Error setting terminal attributes: %s", strerror(errno));
-    exit(1);
-  }  
+  checkForError(tcsetattr(STDIN_FILENO, TCSANOW, &newTerminalAttributes), "setting terminal attributes");
 
   char buf[10];
   int numRead;
-
-  while((numRead = read(STDIN_FILENO, buf, 10))>0)
+  char shellBuf[256];
+  int shellRead;
+  int i;
+  if(childpid!=0)
   {
-    int i;
-    for(i=0; i<numRead; i++)
+    struct pollfd pollingArr[2]={{STDIN_FILENO,POLLIN,0},{pipe2fd[0],POLLIN,0}};
+    while(1)
     {
-      char c = buf[i];
-      int numWritten=0;
-      if(c=='\004')
-	exit(0);
-      else if(c=='\r' || c=='\n')
-	do{
-	  numWritten+=write(STDOUT_FILENO, "\r\n", 2);
-	}while(numWritten!=2);
-      else
-	do{
-	  numWritten+=write(STDOUT_FILENO, &c, 1);
-	}while(numWritten!=1);
+      int pollResult = poll(pollingArr, 2, 0);
+      checkForError(pollResult, "polling");
+      if (pollResult>0)
+      {
+	if(pollingArr[0].revents == POLLIN)
+	{
+	  numRead=read(STDIN_FILENO, buf, 10);
+	  checkForError(numRead, "reading from keyboard");
+	  for(i=0; i<numRead; i++)
+	  {
+	    char c = buf[i];
+	    if(c=='\004')
+	      exit(0);
+	    else if (c=='\r' || c=='\n')
+	    {
+	      checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
+	      checkForError(write(pipefd[1], "\n", 1), "writing from keyboard to shell");    
+	    }
+	    else
+	    {
+	      checkForError(write(STDOUT_FILENO, &buf[i], 1), "writing from keyboard to stdout");
+	      checkForError(write(pipefd[1], &buf[i], 1), "writing from keyboard to shell");    
+	    }
+	  }
+	}
+	if(pollingArr[1].revents == POLLIN)
+	{
+	  shellRead=read(pipe2fd[0], shellBuf, 256);
+	  checkForError(shellRead, "reading from shell");
+	  for(i=0; i<shellRead; i++)
+	  {
+	    char c = shellBuf[i];
+	    if(c=='\n')  
+	      checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from shell to stdout");
+	    else
+	      checkForError(write(STDOUT_FILENO, &c, 1), "writing from shell to stdout");
+	  }
+	}
+      }
+    }
+  }
+  else
+  {
+    while(1)
+    {
+      numRead=read(STDIN_FILENO, buf, 10);
+      checkForError(numRead, "reading from keyboard");
+      for(i=0; i<numRead; i++)
+      {
+	char c = buf[i];
+	if(c=='\004')
+	  exit(0);
+	else if(c=='\r' || c=='\n')
+	  checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing to screen");
+	else
+	  checkForError(write(STDOUT_FILENO, &c, 2), "writing to screen");
+      }
     }
   }
   return 0;
