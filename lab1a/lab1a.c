@@ -5,6 +5,7 @@
 #include<stdio.h>
 #include<stdlib.h>
 #include<sys/types.h>
+#include<sys/wait.h>
 #include<getopt.h>
 #include<poll.h>
 #include<signal.h>
@@ -19,7 +20,7 @@ void checkForError(int result, char* message)
 {
   if(result==-1)
   {
-    fprintf(stderr, "Error %s: %s", message, strerror(errno));
+    fprintf(stderr, "\r\nError %s: %s\r\n", message, strerror(errno));
     exit(1);
   }
 }
@@ -42,7 +43,7 @@ int main(int argc, char *argv[])
       case 's':
 	checkForError(pipe(pipefd), "making pipe 1");
 	checkForError(pipe(pipe2fd), "making pipe 2");
-	
+
 	pid_t pid=fork();
 	checkForError(pid, "forking");
 	if(pid==0)
@@ -73,7 +74,7 @@ int main(int argc, char *argv[])
 	exit(1);
     }
   }
-  
+
   checkForError(tcgetattr(STDIN_FILENO, &originalTerminalAttributes), "getting terminal attributes");
   atexit(resetTerminal);
 
@@ -99,7 +100,7 @@ int main(int argc, char *argv[])
       checkForError(pollResult, "polling");
       if (pollResult>0)
       {
-	if(pollingArr[0].revents == POLLIN)
+	if(pollingArr[0].revents & POLLIN)
 	{
 	  numRead=read(STDIN_FILENO, buf, 10);
 	  checkForError(numRead, "reading from keyboard");
@@ -119,27 +120,35 @@ int main(int argc, char *argv[])
 	    else if (c=='\r' || c=='\n')
 	    {
 	      checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
-	      checkForError(write(pipefd[1], "\n", 1), "writing from keyboard to shell");    
+	      checkForError(write(pipefd[1], "\n", 1), "writing from keyboard to shell");
 	    }
 	    else
 	    {
-	      checkForError(write(STDOUT_FILENO, &buf[i], 1), "writing from keyboard to stdout");
-	      checkForError(write(pipefd[1], &buf[i], 1), "writing from keyboard to shell");    
+	      checkForError(write(STDOUT_FILENO, &c, 1), "writing from keyboard to stdout");
+	      checkForError(write(pipefd[1], &c, 1), "writing from keyboard to shell");
 	    }
 	  }
 	}
-	if(pollingArr[1].revents == POLLIN)
+	if(pollingArr[1].revents & POLLIN)
 	{
 	  shellRead=read(pipe2fd[0], shellBuf, 256);
 	  checkForError(shellRead, "reading from shell");
 	  for(i=0; i<shellRead; i++)
 	  {
 	    char c = shellBuf[i];
-	    if(c=='\n')  
+	    if(c=='\n')
 	      checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from shell to stdout");
 	    else
 	      checkForError(write(STDOUT_FILENO, &c, 1), "writing from shell to stdout");
 	  }
+	}
+	else if(pollingArr[1].revents & (POLLHUP|POLLERR))
+	{
+	  int status;
+	  checkForError(waitpid(childpid, &status, 0), "waiting for child process to finish");
+
+	  fprintf(stderr, "\r\nSHELL EXIT SIGNAL=%d STATUS=%d\r\n", status&0x007f, status>>8);
+	  exit(0);
 	}
       }
     }
