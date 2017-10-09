@@ -13,7 +13,8 @@
 struct termios originalTerminalAttributes;
 void resetTerminal()
 {
-  tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes);
+  if(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes)==-1)
+    fprintf(stderr, "\r\nError restoring terminal attributes\r\n: %s", strerror(errno));
 }
 
 void checkForError(int result, char* message)
@@ -111,6 +112,7 @@ int main(int argc, char *argv[])
 	    {
 	      checkForError(kill(childpid, SIGINT), "killing shell");
 	      checkForError(write(STDOUT_FILENO, "^C", 2), "writing from keyboard to stdout");
+	      checkForError(close(pipefd[1]), "closing pipefd[1]");
 	    }
 	    else if(c=='\004')
 	    {
