@@ -26,6 +26,12 @@ void checkForError(int result, char* message)
   }
 }
 
+void sigpipeHandler(int sig)
+{
+  fprintf(stderr, "Caught sigpipe signal %d", sig);
+  exit(0);
+}
+
 int main(int argc, char *argv[])
 {
   char opt;
@@ -68,6 +74,11 @@ int main(int argc, char *argv[])
 	  checkForError(close(pipefd[0]), "closing pipefd[0]");
 	  checkForError(close(pipe2fd[1]), "closing pipe2fd[1]");
 	  childpid=pid;
+	  if(signal(SIGPIPE, sigpipeHandler) == SIG_ERR)
+	  {
+	    fprintf(stderr, "Error registering sigpipe handler: %s", strerror(errno));
+	    exit(1);
+	  }
         }
 	break;
       default:
