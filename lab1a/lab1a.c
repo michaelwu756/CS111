@@ -123,7 +123,6 @@ int main(int argc, char *argv[])
 	    {
 	      checkForError(kill(childpid, SIGINT), "killing shell");
 	      checkForError(write(STDOUT_FILENO, "^C", 2), "writing from keyboard to stdout");
-	      checkForError(close(pipefd[1]), "closing pipefd[1]");
 	    }
 	    else if(c=='\004')
 	    {
