@@ -17,6 +17,7 @@
 
 struct termios originalTerminalAttributes;
 int socketfd;
+int logfd=-1;
 void resetTerminal()
 {
   if(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes)==-1)
@@ -27,6 +28,12 @@ void closeSocket()
 {
   if(close(socketfd)==-1)
     fprintf(stderr, "\r\nError closing socket: %s\r\n", strerror(errno));
+}
+
+void closeLog()
+{
+  if(close(logfd)==-1)
+    fprintf(stderr, "\r\nError closing log: %s\r\n", strerror(errno));
 }
 
 void checkForError(int result, char* message)
@@ -50,6 +57,17 @@ void printUsage(char *progName)
   exit(1);
 }
 
+void logMessage(char *prefix, int numBytes, char *message)
+{
+  char logBuf[256];
+  int numToWrite = sprintf(logBuf, "%s %d bytes: ", prefix, numBytes);
+  if(numToWrite<0)
+    fprintf(stderr, "\r\nError with sprintf\r\n");
+  checkForError(write(logfd, logBuf, numToWrite), "writing to log");
+  checkForError(write(logfd, message, numBytes), "writing to log");
+  checkForError(write(logfd, "\n", 1), "writing to log");
+}
+
 int main(int argc, char *argv[])
 {
   char opt;
@@ -62,7 +80,6 @@ int main(int argc, char *argv[])
 
   struct sockaddr_in sockaddr;
   sockaddr.sin_port=0;
-  int logfd=-1;
   while((opt=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(opt){
@@ -77,6 +94,7 @@ int main(int argc, char *argv[])
       case 'l':
 	logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
 	checkForError(logfd, "opening logfile");
+	atexit(closeLog);
 	break;
       default:
 	printUsage(argv[0]);
@@ -118,6 +136,7 @@ int main(int argc, char *argv[])
       {
 	numRead=read(STDIN_FILENO, buf, 256);
 	checkForError(numRead, "reading from keyboard");
+	logMessage("SENT", numRead, buf);
 	for(i=0; i<numRead; i++)
 	{
 	  char c = buf[i];
@@ -132,6 +151,7 @@ int main(int argc, char *argv[])
       {
 	numRead=read(socketfd, buf, 256);
 	checkForError(numRead, "reading from socket");
+	logMessage("RECIEVED", numRead, buf);
 	if(numRead==0)
 	  exit(0);
 	for(i=0; i<numRead; i++)
@@ -147,6 +167,5 @@ int main(int argc, char *argv[])
 	exit(0);
     }
   }
-
   return 0;
 }
