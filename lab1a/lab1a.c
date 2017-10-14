@@ -11,6 +11,7 @@
 #include<signal.h>
 
 struct termios originalTerminalAttributes;
+pid_t childpid=0;
 void resetTerminal()
 {
   if(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes)==-1)
@@ -24,6 +25,13 @@ void checkForError(int result, char* message)
     fprintf(stderr, "\r\nError %s: %s\r\n", message, strerror(errno));
     exit(1);
   }
+}
+
+void waitForChild()
+{
+  int status;
+  checkForError(waitpid(childpid, &status, 0), "waiting for child process to finish");
+  fprintf(stderr, "\r\nSHELL EXIT SIGNAL=%d STATUS=%d\r\n", status&0x007f, status>>8);
 }
 
 void sigpipeHandler(int sig)
@@ -43,7 +51,6 @@ int main(int argc, char *argv[])
 
   int pipefd[2];
   int pipe2fd[2];
-  pid_t childpid=0;
   while((opt=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(opt){
@@ -74,6 +81,7 @@ int main(int argc, char *argv[])
 	  checkForError(close(pipefd[0]), "closing pipefd[0]");
 	  checkForError(close(pipe2fd[1]), "closing pipe2fd[1]");
 	  childpid=pid;
+	  atexit(waitForChild);
 	  if(signal(SIGPIPE, sigpipeHandler) == SIG_ERR)
 	  {
 	    fprintf(stderr, "Error registering sigpipe handler: %s", strerror(errno));
@@ -145,6 +153,8 @@ int main(int argc, char *argv[])
 	{
 	  shellRead=read(pipe2fd[0], shellBuf, 256);
 	  checkForError(shellRead, "reading from shell");
+	  if(shellRead==0)
+	    exit(0);
 	  for(i=0; i<shellRead; i++)
 	  {
 	    char c = shellBuf[i];
@@ -155,13 +165,7 @@ int main(int argc, char *argv[])
 	  }
 	}
 	else if(pollingArr[1].revents & (POLLHUP|POLLERR))
-	{
-	  int status;
-	  checkForError(waitpid(childpid, &status, 0), "waiting for child process to finish");
-
-	  fprintf(stderr, "\r\nSHELL EXIT SIGNAL=%d STATUS=%d\r\n", status&0x007f, status>>8);
 	  exit(0);
-	}
       }
     }
   }
