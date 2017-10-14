@@ -86,7 +86,7 @@ int main(int argc, char *argv[])
   {
     switch(opt){
       case 'p':
-        sockaddr.sin_port = atoi(optarg);
+        sockaddr.sin_port = htons(atoi(optarg));
         break;
       case 'l':
         logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
