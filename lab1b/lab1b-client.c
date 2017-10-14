@@ -59,6 +59,8 @@ void printUsage(char *progName)
 
 void logMessage(char *prefix, int numBytes, char *message)
 {
+  if(logfd==-1)
+    return;
   char logBuf[256];
   int numToWrite = sprintf(logBuf, "%s %d bytes: ", prefix, numBytes);
   if(numToWrite<0)
@@ -85,11 +87,6 @@ int main(int argc, char *argv[])
     switch(opt){
       case 'p':
 	sockaddr.sin_port = atoi(optarg);
-	if(signal(SIGPIPE, sigpipeHandler) == SIG_ERR)
-	{
-	  fprintf(stderr, "Error registering sigpipe handler: %s", strerror(errno));
-	  exit(1);
-	}
 	break;
       case 'l':
 	logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
@@ -121,6 +118,12 @@ int main(int argc, char *argv[])
   newTerminalAttributes.c_lflag=0;
 
   checkForError(tcsetattr(STDIN_FILENO, TCSANOW, &newTerminalAttributes), "setting terminal attributes");
+
+  if(signal(SIGPIPE, sigpipeHandler) == SIG_ERR)
+  {
+    fprintf(stderr, "Error registering sigpipe handler: %s", strerror(errno));
+    exit(1);
+  }
 
   char buf[256];
   int numRead;
