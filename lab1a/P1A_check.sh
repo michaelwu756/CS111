@@ -354,7 +354,7 @@ echo ... confirming interrupt generation to shell
 	WAIT 1
 
 	EXPECT "sigint"
-	SEND "^C"
+	SEND "^C\n"
 	WAIT 1
 
 	SEND "^D"
@@ -389,7 +389,7 @@ fi
 # check for orphans
 #
 echo "... checking for orphaned processes"
-ps -ae > STDOUT
+ps -u > STDOUT
 grep lab1a STDOUT > /dev/null
 if [ $? -eq 0 ]
 then
