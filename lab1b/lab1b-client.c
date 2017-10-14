@@ -86,15 +86,15 @@ int main(int argc, char *argv[])
   {
     switch(opt){
       case 'p':
-	sockaddr.sin_port = atoi(optarg);
-	break;
+        sockaddr.sin_port = atoi(optarg);
+        break;
       case 'l':
-	logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
-	checkForError(logfd, "opening logfile");
-	atexit(closeLog);
-	break;
+        logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+        checkForError(logfd, "opening logfile");
+        atexit(closeLog);
+        break;
       default:
-	printUsage(argv[0]);
+        printUsage(argv[0]);
     }
   }
   if(sockaddr.sin_port==0)
@@ -137,37 +137,37 @@ int main(int argc, char *argv[])
     {
       if(pollingArr[0].revents & POLLIN)
       {
-	numRead=read(STDIN_FILENO, buf, 256);
-	checkForError(numRead, "reading from keyboard");
-	logMessage("SENT", numRead, buf);
-	for(i=0; i<numRead; i++)
-	{
-	  char c = buf[i];
-	  if(c=='\r' || c=='\n')
-	    checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
-	  else
-	    checkForError(write(STDOUT_FILENO, &c, 1), "writing from keyboard to stdout");
-	  checkForError(write(socketfd, &c, 1), "writing from keyboard to socket");
-	}
+        numRead=read(STDIN_FILENO, buf, 256);
+        checkForError(numRead, "reading from keyboard");
+        logMessage("SENT", numRead, buf);
+        for(i=0; i<numRead; i++)
+        {
+          char c = buf[i];
+          if(c=='\r' || c=='\n')
+            checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
+          else
+            checkForError(write(STDOUT_FILENO, &c, 1), "writing from keyboard to stdout");
+          checkForError(write(socketfd, &c, 1), "writing from keyboard to socket");
+        }
       }
       if(pollingArr[1].revents & POLLIN)
       {
-	numRead=read(socketfd, buf, 256);
-	checkForError(numRead, "reading from socket");
-	logMessage("RECIEVED", numRead, buf);
-	if(numRead==0)
-	  exit(0);
-	for(i=0; i<numRead; i++)
-	{
-	  char c = buf[i];
-	  if(c=='\n')
-	    checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from socket to stdout");
-	  else
-	    checkForError(write(STDOUT_FILENO, &c, 1), "writing from socket to stdout");
-	}
+        numRead=read(socketfd, buf, 256);
+        checkForError(numRead, "reading from socket");
+        logMessage("RECIEVED", numRead, buf);
+        if(numRead==0)
+          exit(0);
+        for(i=0; i<numRead; i++)
+        {
+          char c = buf[i];
+          if(c=='\n')
+            checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from socket to stdout");
+          else
+            checkForError(write(STDOUT_FILENO, &c, 1), "writing from socket to stdout");
+        }
       }
       else if(pollingArr[1].revents & (POLLHUP|POLLERR))
-	exit(0);
+        exit(0);
     }
   }
   return 0;
