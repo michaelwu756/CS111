@@ -239,9 +239,9 @@ int main(int argc, char *argv[])
       {
         numRead=read(socketfd, buf, 256);
         checkForError(numRead, "reading from socket");
+        logMessage("RECIEVED", numRead, buf);
         if(encrypt==1)
           mdecrypt_generic(tdDecrypt, buf, numRead);
-        logMessage("RECIEVED", numRead, buf);
         if(numRead==0)
           exit(0);
         for(i=0; i<numRead; i++)
