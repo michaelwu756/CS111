@@ -2,3 +2,23 @@ NAME: Michael Wu
 EMAIL: cheeserules43@gmail.com
 ID: 404751542
 
+This submission includes:
+
+Makefile: builds the client and server applications.
+
+lab1b-client.c: This compiles into a program that connects to the server on a
+port given by the required --port option. It sends characters to the server so
+that the server can execute the commands on a shell. The client echos the shells
+output back. Can use the --log option to view all bytes sent through the
+network. Can use the --encrypt option to specify a file to use as a key for
+encryption.
+
+lab1b-server.c: This compiles into a program that listens on a port given by the
+required --port option for the associated client program, which sends characters
+over the network to be forwarded by the server to a shell to execute. Can be
+used with the --encrypt option to specify a file to use as a key for
+encryption. The client must use the same key in order to facilitate proper
+communication.
+
+my.key: a file containing a string of random characters to use as a key for
+encryption.
