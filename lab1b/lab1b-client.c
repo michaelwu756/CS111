@@ -239,7 +239,7 @@ int main(int argc, char *argv[])
       {
         numRead=read(socketfd, buf, 256);
         checkForError(numRead, "reading from socket");
-        logMessage("RECIEVED", numRead, buf);
+        logMessage("RECEIVED", numRead, buf);
         if(encrypt==1)
           mdecrypt_generic(tdDecrypt, buf, numRead);
         if(numRead==0)
