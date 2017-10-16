@@ -11,7 +11,8 @@ port given by the required --port option. It sends characters to the server so
 that the server can execute the commands on a shell. The client echos the shells
 output back. Can use the --log option to view all bytes sent through the
 network. Can use the --encrypt option to specify a file to use as a key for
-encryption.
+encryption. Additionally there is a --host option that allows you to specify an
+ip address instead of localhost to connect to.
 
 lab1b-server.c: This compiles into a program that listens on a port given by the
 required --port option for the associated client program, which sends characters

@@ -96,6 +96,7 @@ int main(int argc, char *argv[])
     {"port", required_argument, 0, 'p'},
     {"log", required_argument, 0, 'l'},
     {"encrypt", required_argument, 0, 'e'},
+    {"host", required_argument, 0, 'h'},
     {0, 0, 0, 0}
   };
 
@@ -103,6 +104,8 @@ int main(int argc, char *argv[])
   int i;
   struct sockaddr_in sockaddr;
   sockaddr.sin_port=0;
+  sockaddr.sin_family=AF_INET;
+  checkForError(inet_aton("127.0.0.1", &(sockaddr.sin_addr)), "getting internet address");
   while((opt=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(opt){
@@ -173,15 +176,15 @@ int main(int argc, char *argv[])
 
         atexit(closeEncryptionDescriptors);
         break;
+      case 'h':
+        checkForError(inet_aton(optarg, &(sockaddr.sin_addr)), "getting internet address");
+        break;
       default:
         printUsage(argv[0]);
     }
   }
   if(sockaddr.sin_port==0)
     printUsage(argv[0]);
-
-  sockaddr.sin_family=AF_INET;
-  checkForError(inet_aton("127.0.0.1", &(sockaddr.sin_addr)), "getting internet address");
 
   socketfd=socket(AF_INET,SOCK_STREAM,0);
   checkForError(socketfd,"opening socket");
