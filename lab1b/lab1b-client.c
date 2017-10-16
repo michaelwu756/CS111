@@ -13,11 +13,16 @@
 #include<fcntl.h>
 #include<netinet/in.h>
 #include<arpa/inet.h>
-
+#include<mcrypt.h>
 
 struct termios originalTerminalAttributes;
 int socketfd;
 int logfd=-1;
+MCRYPT tdEncrypt;
+MCRYPT tdDecrypt;
+char *IVEncrypt;
+char *IVDecrypt;
+
 void resetTerminal()
 {
   if(tcsetattr(STDIN_FILENO, TCSANOW, &originalTerminalAttributes)==-1)
@@ -34,6 +39,19 @@ void closeLog()
 {
   if(close(logfd)==-1)
     fprintf(stderr, "\r\nError closing log: %s\r\n", strerror(errno));
+}
+
+void closeEncryptionDescriptors()
+{
+  int result;
+  result = mcrypt_module_close(tdEncrypt);
+  if(result<0)
+    mcrypt_perror(result);
+  result = mcrypt_module_close(tdDecrypt);
+  if(result<0)
+    mcrypt_perror(result);
+  free(IVEncrypt);
+  free(IVDecrypt);
 }
 
 void checkForError(int result, char* message)
@@ -53,7 +71,7 @@ void sigpipeHandler(int sig)
 
 void printUsage(char *progName)
 {
-  fprintf(stderr, "Usage: %s --port=N [--log=FILE]\n", progName);
+  fprintf(stderr, "Usage: %s --port=N [--log=FILE --encrypt=KEYFILE]\n", progName);
   exit(1);
 }
 
@@ -77,9 +95,12 @@ int main(int argc, char *argv[])
   {
     {"port", required_argument, 0, 'p'},
     {"log", required_argument, 0, 'l'},
+    {"encrypt", required_argument, 0, 'e'},
     {0, 0, 0, 0}
   };
 
+  int encrypt=0;
+  int i;
   struct sockaddr_in sockaddr;
   sockaddr.sin_port=0;
   while((opt=getopt_long(argc, argv, "", long_options, 0)) != -1)
@@ -93,6 +114,65 @@ int main(int argc, char *argv[])
         checkForError(logfd, "opening logfile");
         atexit(closeLog);
         break;
+      case 'e':
+        encrypt=1;
+        int keyfilefd = open(optarg, O_RDONLY);
+        checkForError(keyfilefd, "opening keyfile");
+        char *keyBuf[32];
+        int keylen = read(keyfilefd, keyBuf, 32);
+        checkForError(keylen, "reading key from keyfile");
+        checkForError(close(keyfilefd), "closing keyfile");
+
+        tdEncrypt = mcrypt_module_open("twofish", NULL, "cfb", NULL);
+        if (tdEncrypt==MCRYPT_FAILED)
+        {
+          fprintf(stderr, "Error opening encryption module");
+          exit(1);
+        }
+
+        tdDecrypt = mcrypt_module_open("twofish", NULL, "cfb", NULL);
+        if (tdDecrypt==MCRYPT_FAILED)
+        {
+          fprintf(stderr, "Error opening decryption module");
+          exit(1);
+        }
+
+        IVEncrypt = malloc(mcrypt_enc_get_iv_size(tdEncrypt));
+        if (IVEncrypt == NULL)
+        {
+          fprintf(stderr, "Error allocating IV memory");
+          exit(1);
+        }
+
+        IVDecrypt = malloc(mcrypt_enc_get_iv_size(tdDecrypt));
+        if (IVDecrypt == NULL)
+        {
+          fprintf(stderr, "Error allocating IV memory");
+          exit(1);
+        }
+
+        for (i=0; i< mcrypt_enc_get_iv_size(tdEncrypt); i++) {
+          IVEncrypt[i]='a';
+        }
+
+        for (i=0; i< mcrypt_enc_get_iv_size(tdEncrypt); i++) {
+          IVDecrypt[i]='b';
+        }
+
+        i=mcrypt_generic_init(tdEncrypt, keyBuf, keylen, IVEncrypt);
+        if (i<0) {
+          mcrypt_perror(i);
+          exit(1);
+        }
+
+        i=mcrypt_generic_init(tdDecrypt, keyBuf, keylen, IVDecrypt);
+        if (i<0) {
+          mcrypt_perror(i);
+          exit(1);
+        }
+
+        atexit(closeEncryptionDescriptors);
+        break;
       default:
         printUsage(argv[0]);
     }
@@ -102,7 +182,7 @@ int main(int argc, char *argv[])
 
   sockaddr.sin_family=AF_INET;
   checkForError(inet_aton("127.0.0.1", &(sockaddr.sin_addr)), "getting internet address");
-  
+
   socketfd=socket(AF_INET,SOCK_STREAM,0);
   checkForError(socketfd,"opening socket");
   checkForError(connect(socketfd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)), "connecting to socket");
@@ -127,7 +207,6 @@ int main(int argc, char *argv[])
 
   char buf[256];
   int numRead;
-  int i;
   struct pollfd pollingArr[2]={{STDIN_FILENO,POLLIN,0},{socketfd,POLLIN,0}};
   while(1)
   {
@@ -139,7 +218,6 @@ int main(int argc, char *argv[])
       {
         numRead=read(STDIN_FILENO, buf, 256);
         checkForError(numRead, "reading from keyboard");
-        logMessage("SENT", numRead, buf);
         for(i=0; i<numRead; i++)
         {
           char c = buf[i];
@@ -147,6 +225,13 @@ int main(int argc, char *argv[])
             checkForError(write(STDOUT_FILENO, "\r\n", 2), "writing from keyboard to stdout");
           else
             checkForError(write(STDOUT_FILENO, &c, 1), "writing from keyboard to stdout");
+        }
+        if(encrypt==1)
+          mcrypt_generic(tdEncrypt, buf, numRead);
+        logMessage("SENT", numRead, buf);
+        for(i=0; i<numRead; i++)
+        {
+          char c = buf[i];
           checkForError(write(socketfd, &c, 1), "writing from keyboard to socket");
         }
       }
@@ -154,6 +239,8 @@ int main(int argc, char *argv[])
       {
         numRead=read(socketfd, buf, 256);
         checkForError(numRead, "reading from socket");
+        if(encrypt==1)
+          mdecrypt_generic(tdDecrypt, buf, numRead);
         logMessage("RECIEVED", numRead, buf);
         if(numRead==0)
           exit(0);

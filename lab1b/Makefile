@@ -1,4 +1,4 @@
-CFLAGS=-Wall -Wextra
+CFLAGS=-Wall -Wextra -lmcrypt
 
 all: lab1b-client lab1b-server
 
