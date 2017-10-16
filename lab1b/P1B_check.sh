@@ -187,7 +187,7 @@ fi
 # function to check for orphaned client or server
 #
 orphan_check() {
-	ps -ae > ORPHANS.OUT
+	ps -u > ORPHANS.OUT
 	for p in $CLIENT $SERVER
 	do
 		grep $p ORPHANS.OUT > /dev/null
