@@ -1,0 +1,29 @@
+NAME: Michael Wu
+EMAIL: cheeserules43@gmail.com
+ID: 404751542
+
+My beaglebone serial number is BBGW16062928
+
+My beaglebone wifi MAC address is 2c:f7:f1:06:55:60
+
+This submission contains:
+
+my_beaglebone.jpg: A picture of me holding my beaglebone.
+
+connected.png: A screenshot of me running hostname to show that I changed the
+hostname to 404751542.lasr.cs.ucla.edu and me running ifconfig to show that my
+wlan0 has an IP address of 192.168.0.20 and a MAC address of 2c:f7:f1:06:55:60.
+
+copy.png: A screenshot of git bash on windows, a bash emulator, running scp to
+copy a hello world source file to the home directory of root on my beaglebone
+over wifi.
+
+build_run.png: A screenshot of me connecting to my beaglebone through wifi at
+192.168.0.20, compiling the hello world source file, and executing it.
+
+git.png: A screenshot of me connecting to my beaglebone through wifi at
+192.168.0.20, adding my ssh-key to ssh-agent, running apt-get to install git,
+and cloning my CS111 project repo. I had setup a login script to automatically
+add an ssh-key I generated earlier to ssh-agent. I did this in order to be able
+to authenticate myself when cloning my git repo. Git was already installed when
+I ran apt-get.
