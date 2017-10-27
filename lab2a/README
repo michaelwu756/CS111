@@ -27,7 +27,7 @@ Why are the --yield runs so much slower?
 Because yielding and switching threads incurs an overhead that reduces the
 overall performance. Yielding for every iteration results in a large slowdown in
 performance. Additionally real time is spent running threads not owned by our
-process since the yield may result in another process being scehduled.
+process since the yield may result in another process being scheduled.
 
 Where is the additional time going?
 
@@ -39,4 +39,49 @@ option?
 
 Yes, we simply use the cpu-time clock instead of the real clock to avoid
 counting other processes' time in the calculation. I have already made my
-default implementation use the cpu-time clock.
+default implementation use the cpu-time clock. This is assuming that we consider
+the yield to be part of the add operation. There is no way to separate the yield
+part from the calculation. Any measurement of individual operations such as a
+single addition statement would incur a high overhead, resulting in inaccurate
+measurements.
+
+Question 2.1.3
+
+Why does the average cost per operation drop with increasing iterations?
+
+Because the load and store operations themselves are very short, when we run few
+operations a large part of their cost is the overhead of making and managing
+threads. As we increase the iterations the cost of making and managing threads
+is amortized over the number of iterations.
+
+If the cost per iteration is a function of the number of iterations, how do we
+know how many iterations to run (or what the "correct" cost is)?
+
+Simply run a high number of operations. We should expect that as we increase the
+number of operations the average cost per operation approaches the true cost per
+operation. The overhead should be minimized with a high number of operations,
+leading to a flattening of the average cost per iteration vs iteration
+graph. Thus the correct cost is the value that the graph asymptotically
+approaches.
+
+Question 2.1.4
+
+Why do all of the options perform similarly for low numbers of threads?
+
+Because the synchronization method does not slow down the program
+significantly. For a single thread the locks do not do anything, so the
+execution is not slowed down other than by the overhead of the synchronization
+method. With two threads running, only one thread may be blocked at a time which
+means that the execution is slowed down only sometimes. Any particular thread is
+expected to be blocked about 50% of the time. Having a thread spin in this case
+is about as costly as the overhead of switching to another thread to execute. So
+the options perform about the same in this case, but they begin to diverge
+after that.
+
+Why do the three protected operations slow down as the number of threads rises?
+
+As the number of threads rises the time that any given thread can expect to be
+blocked will rise. With four threads, one thread can expect to be blocked 75% of
+the time, with 8 threads, one can expect to be blocked 87.5% of the time, etc.
+So more time is spent waiting and switching between threads rather than doing
+what we want.
