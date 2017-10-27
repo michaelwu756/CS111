@@ -23,7 +23,7 @@ void checkForError(int result, char *message)
 
 void printUsage(char *progName)
 {
-  fprintf(stderr, "Usage: %s --threads=N --iterations==N\n", progName);
+  fprintf(stderr, "Usage: %s --threads=N --iterations==N [--yield] [--sync=m|s|c]\n", progName);
   exit(1);
 }
 
@@ -37,12 +37,18 @@ void *threadMain(void *arg)
   return NULL;
 }
 
-void printCSV(char *testType, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, int counter)
+void printCSV(int yield, char testType, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, int counter)
 {
   struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
   long long elapsedTimeNsec = elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec;
   long long operations = iterations*threads*2;
-  printf("%s,%d,%d,%d,%d,%d,%d\n",testType,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations,counter);
+  char *y=(yield==1)?"yield-":"";
+  char t[5];
+  if(testType=='\0')
+    strcpy(t,"none");
+  else
+    sprintf(t, "%c\0", testType);
+  printf("add-%s%s,%d,%d,%d,%d,%d,%d\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations,counter);
 }
 
 int main(int argc, char  *argv[])
@@ -51,12 +57,15 @@ int main(int argc, char  *argv[])
   {
     {"threads", required_argument, 0, 't'},
     {"iterations", required_argument, 0, 'i'},
+    {"sync", required_argument, 0, 's'},
+    {"yield", no_argument, 0, 'y'},
     {0, 0, 0, 0}
   };
   
   char c;
-  char *testType="add-none";
+  char testType='\0';
   int threads=0;
+  int yield=0;
   iterations=0;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
@@ -67,13 +76,19 @@ int main(int argc, char  *argv[])
       case 'i':
         iterations=atoi(optarg);
         break;
+      case 's':
+        testType=optarg[0];
+        break;
+      case 'y':
+        yield=1;
+        break;
       default:
         printUsage(argv[0]);
         break;
     }
   }
 
-  if(threads==0 || iterations==0)
+  if(threads==0 || iterations==0 || (testType!='\0' && testType!='m' && testType!='s' && testType!='c'))
     printUsage(argv[0]);
 
   long long counter=0;
@@ -91,5 +106,5 @@ int main(int argc, char  *argv[])
   struct timespec endTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
 
-  printCSV(testType, threads, iterations, &startTime, &endTime, counter);
+  printCSV(yield, testType, threads, iterations, &startTime, &endTime, counter);
 }
