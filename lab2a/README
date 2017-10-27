@@ -1,0 +1,42 @@
+NAME: Michael Wu
+EMAIL: cheeserules43@gmail.com
+ID: 404751542
+
+Question 2.1.1
+
+Why does it take many iterations before errors are seen?
+
+The scheduler will only interrupt a thread a few times, and if a thread is not
+interrupted between the load and the store of the counter, then it will execute
+the critical section correctly and not result in an error. With more iterations
+there will be more interrupts, raising the chance that a thread will be
+interrupted during the critical section.
+
+Why does a significantly smaller number of iterations so seldom fail?
+
+Because for a small number of iterations, the probability that the race
+condition results in an error is smaller since there are less opportunities for
+the threads to interfere with each other. There are fewer interrupts which
+lowers the likelihood that a thread will be interrupted during the critical
+section.
+
+Question 2.1.2
+
+Why are the --yield runs so much slower?
+
+Because yielding and switching threads incurs an overhead that reduces the
+overall performance. Yielding for every iteration results in a large slowdown in
+performance. Additionally real time is spent running threads not owned by our
+process since the yield may result in another process being scehduled.
+
+Where is the additional time going?
+
+The additional time is spent storing the registers and loading new registers to
+run a different thread each yield, and possibly running other processes.
+
+Is it possible to get valid per-operation timings if we are using the --yield
+option?
+
+Yes, we simply use the cpu-time clock instead of the real clock to avoid
+counting other processes' time in the calculation. I have already made my
+default implementation use the cpu-time clock.

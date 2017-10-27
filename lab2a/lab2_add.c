@@ -7,8 +7,12 @@
 #include<errno.h>
 
 int iterations;
+int opt_yield=0;
+char testType='\0';
 void add(long long *pointer, long long value) {
   long long sum = *pointer + value;
+  if (opt_yield)
+    sched_yield();
   *pointer = sum;
 }
 
@@ -37,17 +41,17 @@ void *threadMain(void *arg)
   return NULL;
 }
 
-void printCSV(int yield, char testType, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, int counter)
+void printCSV(int yield, char type, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, int counter)
 {
   struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
   long long elapsedTimeNsec = elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec;
   long long operations = iterations*threads*2;
   char *y=(yield==1)?"yield-":"";
   char t[5];
-  if(testType=='\0')
+  if(type=='\0')
     strcpy(t,"none");
   else
-    sprintf(t, "%c\0", testType);
+    sprintf(t, "%c\0", type);
   printf("add-%s%s,%d,%d,%d,%d,%d,%d\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations,counter);
 }
 
@@ -63,9 +67,7 @@ int main(int argc, char  *argv[])
   };
   
   char c;
-  char testType='\0';
   int threads=0;
-  int yield=0;
   iterations=0;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
@@ -80,7 +82,7 @@ int main(int argc, char  *argv[])
         testType=optarg[0];
         break;
       case 'y':
-        yield=1;
+        opt_yield=1;
         break;
       default:
         printUsage(argv[0]);
@@ -106,5 +108,5 @@ int main(int argc, char  *argv[])
   struct timespec endTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
 
-  printCSV(yield, testType, threads, iterations, &startTime, &endTime, counter);
+  printCSV(opt_yield, testType, threads, iterations, &startTime, &endTime, counter);
 }
