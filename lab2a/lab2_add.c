@@ -37,6 +37,14 @@ void *threadMain(void *arg)
   return NULL;
 }
 
+void printCSV(char *testType, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, int counter)
+{
+  struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
+  long long elapsedTimeNsec = elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec;
+  long long operations = iterations*threads*2;
+  printf("%s,%d,%d,%d,%d,%d,%d\n",testType,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations,counter);
+}
+
 int main(int argc, char  *argv[])
 {
   static struct option long_options[] =
@@ -47,6 +55,7 @@ int main(int argc, char  *argv[])
   };
   
   char c;
+  char *testType="add-none";
   int threads=0;
   iterations=0;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
@@ -81,4 +90,6 @@ int main(int argc, char  *argv[])
   
   struct timespec endTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
+
+  printCSV(testType, threads, iterations, &startTime, &endTime, counter);
 }
