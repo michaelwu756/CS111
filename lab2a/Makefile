@@ -12,9 +12,13 @@ lab2_add: lab2_add.c
 lab2_list: lab2_list.c SortedList.c
 	gcc $(CFLAGS) -o $@ $^
 
-.PHONY: clean dist test graphs
+lab2_add-%.png: lab2_add.csv lab2_add.gp
+	gnuplot -c lab2_add.gp
 
-test: lab2_add
+lab2_list-%.png: lab2_list.csv lab2_list.gp
+	gnuplot -c lab2_list.gp
+
+lab2_add.csv: lab2_add
 	> lab2_add.csv
 	for sync_option in $(TEST_ADD_SYNC_OPTIONS) ; do \
 		for yield_option in $(TEST_ADD_YIELD_OPTIONS) ; do \
@@ -26,6 +30,7 @@ test: lab2_add
 		done \
 	done
 
+lab2_list.csv: lab2_list
 	> lab2_list.csv
 	./lab2_list --threads=1  --iterations=10	      >> lab2_list.csv
 	./lab2_list --threads=1  --iterations=100	      >> lab2_list.csv
@@ -163,12 +168,18 @@ test: lab2_add
 	./lab2_list --threads=16 --iterations=1000 --sync=s >> lab2_list.csv
 	./lab2_list --threads=24 --iterations=1000 --sync=s >> lab2_list.csv
 
-graphs: lab2_add.csv lab2_list.csv
-	gnuplot -c lab2_add.gp
-	gnuplot -c lab2_list.gp
+.PHONY: build clean dist test graphs
+
+tests:
+	rm -f lab2_add.csv lab2_list.csv
+	make lab2_add.csv lab2_list.csv
+
+graphs:
+	rm -f lab2_add-*.png lab2_list-*.png
+	make lab2_add-1.png lab2_list-1.png
 
 clean:
-	rm -rf lab2_add lab2_list *.csv *.png *.tar.gz
+	rm -f lab2_add lab2_list *.csv *.png *.tar.gz
 
-dist: README lab2_add.c SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2_list.csv lab2_add-1.png lab2_add-2.png lab2_add-3.png lab2_add-4.png lab2_add-5.png lab2_list-1.png lab2_list-2.png lab2_list-3.png lab2_list-4.png
-	tar -xzf lab2a-404751542.tar.gz $^
+dist: README lab2_add.c SortedList.h SortedList.c lab2_list.c Makefile lab2_add.csv lab2_list.csv lab2_add.gp lab2_list.gp lab2_add-1.png lab2_add-2.png lab2_add-3.png lab2_add-4.png lab2_add-5.png lab2_list-1.png lab2_list-2.png lab2_list-3.png lab2_list-4.png
+	tar -czf lab2a-404751542.tar.gz $^
