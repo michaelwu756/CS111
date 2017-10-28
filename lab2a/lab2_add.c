@@ -89,7 +89,7 @@ int main(int argc, char  *argv[])
     {0, 0, 0, 0}
   };
 
-  char c;
+  signed char c;
   int threads=0;
   iterations=0;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
@@ -136,4 +136,5 @@ int main(int argc, char  *argv[])
   printCSV(opt_yield, testType, threads, iterations, &startTime, &endTime, counter);
 
   pthread_mutex_destroy(&mutex);
+  return 0;
 }

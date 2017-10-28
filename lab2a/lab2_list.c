@@ -130,7 +130,7 @@ int main(int argc, char  *argv[])
     {0, 0, 0, 0}
   };
 
-  char c;
+  signed char c;
   int threads=1;
   iterations=1;
   int i;
@@ -212,4 +212,5 @@ int main(int argc, char  *argv[])
 
   free(elementArr);
   pthread_mutex_destroy(&mutex);
+  return 0;
 }
