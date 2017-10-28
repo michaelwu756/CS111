@@ -97,12 +97,12 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
     y[i]='i';
     i++;
   }
-  if(yield & INSERT_YIELD)
+  if(yield & DELETE_YIELD)
   {
     y[i]='d';
     i++;
   }
-  if(yield & INSERT_YIELD)
+  if(yield & LOOKUP_YIELD)
   {
     y[i]='l';
     i++;
@@ -116,7 +116,7 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
     strcpy(t,"none");
   else
     sprintf(t, "%c", type);
-  printf("list-%s-%s,%d,%d,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations);
+  printf("list-%s-%s,%d,%d,1,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations);
 }
 
 int main(int argc, char  *argv[])
