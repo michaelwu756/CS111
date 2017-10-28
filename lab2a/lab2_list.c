@@ -64,7 +64,7 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
 {
   struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
   long long elapsedTimeNsec = elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec;
-  long long operations = iterations*threads*2;
+  long long operations = iterations*threads*3;
   char y[5];
   int i=0;
   if(yield & INSERT_YIELD)
