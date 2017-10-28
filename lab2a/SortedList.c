@@ -36,15 +36,19 @@ SortedListElement_t *SortedList_lookup(SortedList_t *list, const char *key)
 }
 int SortedList_length(SortedList_t *list)
 {
+  if(list==NULL || list->next==NULL || list->prev==NULL || list->key!=NULL)
+    return -1;
   struct SortedListElement *cur=list;
   int elements=0;
   while(cur->next->prev==cur)
   {
     cur=cur->next;
+    if(cur->next==NULL || (cur->key==NULL && cur!=list))
+      return -1;
     if(cur->key == NULL)
       return elements;
     else
-      elements++;    
+      elements++;
   }
   return -1;
 }
