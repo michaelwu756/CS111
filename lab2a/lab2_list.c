@@ -91,7 +91,7 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
     strcpy(t,"none");
   else
     sprintf(t, "%c", type);
-  printf("add-%s-%s,%d,%d,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations);
+  printf("list-%s-%s,%d,%d,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations);
 }
 
 int main(int argc, char  *argv[])
