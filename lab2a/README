@@ -85,3 +85,107 @@ blocked will rise. With four threads, one thread can expect to be blocked 75% of
 the time, with 8 threads, one can expect to be blocked 87.5% of the time, etc.
 So more time is spent waiting and switching between threads rather than doing
 what we want.
+
+Question 2.2.1
+
+Compare the variation in time per mutex-protected operation vs the number of
+threads in Part-1 (adds) and Part-2 (sorted lists).
+
+They both appear to increase the time per operation as the number of threads go
+up. However the absolute value of the length adjusted time per operation curve
+is smaller, but that is due to the length adjustment. Other than that they look
+quite similar.
+
+Comment on the general shapes of the curves, and explain why they have this
+shape.
+
+The time per operations appears to increase linearly with the number of
+threads. The linear scale occurs because with T threads, any given thread will
+only run with efficiency E=1/T percent of the time. Thus the time t_T for any
+operation with T threads is scaled to t_T=t_1/E or t_T=t_1*T. Thus the cost per
+operation scales linearly with T.
+
+Comment on the relative rates of increase and differences in the shapes of the
+curves, and offer an explanation for these differences.
+
+The curve shapes have practically no difference. The relative rates of increase
+differ, but that is due to the adjustment for length of the list and the fact
+that the two programs are performing different operations.
+
+Question 2.2.2
+
+Compare the variation in time per protected operation vs the number of threads
+for list operations protected by Mutex vs Spin locks.
+
+The time per protected operation is generally more for spin locks than mutex
+locks. They are about the same for one thread or two threads, but spin locks
+result in far greater inefficiency for more than two threads.
+
+Comment on the general shapes of the curves, and explain why they have this shape.
+
+The mutex curve appears relatively straight, this would indicate that the cost
+per operation scales with number of threads linearly. The spin lock is also
+relatively straight, but has a steeper slope. The linear scale occurs because
+with T threads, any given thread will only run with efficiency E=1/T percent of the
+time. Thus the time t_T for any operation with T threads is scaled to t_T=t_1/E
+or t_T=t_1*T. Thus the cost per operation scales linearly with T.
+
+Comment on the relative rates of increase and differences in the shapes of the
+curves, and offer an explanation for these differences.
+
+The spin lock has a steeper slope than the mutex lock. This is because it is
+less efficient than the mutex lock because the mutex lock can result in a thread
+switching to another one if it does not acquire a lock. The spin lock wastes an
+entire time slice per thread instead of switching when the thread is
+blocked.Thus less processor time is wasted with a mutex lock. This effect is
+more noticeable with more threads.
+
+This submission contains:
+
+lab2_add.c: Source file that runs multiple threads and iterations of adding to
+shared counter.
+
+lab2_list.c: Source file that runs multiple threads and iterations of modifying
+linked list.
+
+SortedList.h: Header for sorted list implementation.
+
+SortedList.c: Source file for sorted list implementation with yields.
+
+Makefile: Builds project, do make dist to generate all tests and graphs. Default
+target only make executables lab2_add and lab2_list.
+
+lab2_add.gp: Plotting script for lab2_add data.
+
+lab2_list.gp: Plotting script for lab2_list data.
+
+lab2_add.csv: lab2_add test results.
+
+lab2_list.csv: lab2_list test results.
+
+lab2_add-1.png: Graph of lab2_add showing that the yield option results in more
+failures than without.
+
+lab2_add-2.png: Graph of lab2_add showing that cost per operation is higher
+with yields.
+
+lab2_add-3.png: Graph of lab2_add showing that cost per operation decreases with
+increasing iterations.
+
+lab2_add-4.png: Graph of lab2_add showing that synchronization options always
+results in successful run.
+
+lab2_add-5.png: Graph of lab2_add showing performance of different
+synchronization options.
+
+lab2_list-1.png: Graph of lab2_list showing cost per operation with respect to
+iterations.
+
+lab2_list-2.png: Graph of lab2_list showing that yield options cause more
+failures than without.
+
+lab2_list-3.png: Graph of lab2_list showing that synchronization options result
+in sucessful runs.
+
+lab2_list-4.png: Graph of lab2_list showing performance of different
+synchronization options.
