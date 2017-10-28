@@ -2,14 +2,14 @@ TEST_ADD_THREADS = 1 2 4 8 12
 TEST_ADD_ITERATIONS = 10 20 40 80 100 1000 10000 100000
 TEST_ADD_SYNC_OPTIONS = "" m s c
 TEST_ADD_YIELD_OPTIONS = "" --yield
-CFLAGS = -Wall -Wextra
+CFLAGS = -Wall -Wextra -lpthread
 
-build: lab2_add #lab2_list
+build: lab2_add lab2_list
 
 lab2_add: lab2_add.c
-	gcc $(CFLAGS) -lpthread -o $@ $^
+	gcc $(CFLAGS) -o $@ $^
 
-lab2_list: lab2_list.c
+lab2_list: lab2_list.c SortedList.c
 	gcc $(CFLAGS) -o $@ $^
 
 .PHONY: clean dist test graphs

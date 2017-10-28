@@ -1,6 +1,6 @@
-#include <stdlib.h>
-#include <sched.h>
-#include "SortedList.h"
+#include<stdlib.h>
+#include<sched.h>
+#include"SortedList.h"
 void SortedList_insert(SortedList_t *list, SortedListElement_t *element)
 {
   struct SortedListElement *cur=list;
@@ -16,18 +16,20 @@ void SortedList_insert(SortedList_t *list, SortedListElement_t *element)
         sched_yield();
       cur->next=element;
       added=1;
-    }  
+    }
     else
       cur=cur->next;
   }
 }
 int SortedList_delete( SortedListElement_t *element)
 {
+  if(element->next==NULL || element->prev==NULL || element->next->prev!=element || element->prev->next!=element)
+    return 1;
   element->next->prev=element->prev;
   if(opt_yield & DELETE_YIELD)
     sched_yield();
   element->prev->next=element->next;
-  free(element);
+  return 0;
 }
 SortedListElement_t *SortedList_lookup(SortedList_t *list, const char *key)
 {
