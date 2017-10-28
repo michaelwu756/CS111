@@ -106,7 +106,7 @@ set output 'lab2_add-5.png'
 set key left top
 # grep out only successful (sum=0) yield runs
 plot \
-     "< grep 'add-none,1,10000,' lab2_add.csv" using ($2):($6) \
+     "< grep 'add-none,[0-9]*,10000,' lab2_add.csv" using ($2):($6) \
 	title 'unprotected' with linespoints lc rgb 'red', \
      "< grep -e 'add-c,[0-9]*,10000,' lab2_add.csv" using ($2):($6) \
 	title 'CAS' with linespoints lc rgb 'green', \
