@@ -42,19 +42,44 @@ void segfaultHandler(int sig)
   exit(2);
 }
 
+void acquireLock()
+{
+  if(testType=='m')
+    pthread_mutex_lock(&mutex);
+  if(testType=='s')
+    while(__sync_lock_test_and_set(&syncLock, 1)!=0)
+      ;
+}
+
+void releaseLock()
+{
+  if(testType=='m')
+    pthread_mutex_unlock(&mutex);
+  if(testType=='s')
+    __sync_lock_release(&syncLock);
+}
+
 void *threadMain(void *arg)
 {
   int threadNum=*(int *)arg;
   int i;
   for(i=0; i<iterations; i++)
+  {
+    acquireLock();
     SortedList_insert(&list,elementArr+threadNum*iterations+i);
+    releaseLock();
+  }
+  acquireLock();
   if(SortedList_length(&list)==-1)
     corruptedList();
+  releaseLock();
   for(i=0; i<iterations; i++)
   {
+    acquireLock();
     SortedListElement_t *element = SortedList_lookup(&list, elementArr[threadNum*iterations+i].key);
     if(element==NULL || SortedList_delete(element)==1)
       corruptedList();
+    releaseLock();
   }
   free(arg);
   return NULL;
