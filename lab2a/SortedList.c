@@ -1,3 +1,5 @@
+#include <stdlib.h>
+#include "SortedList.h"
 void SortedList_insert(SortedList_t *list, SortedListElement_t *element)
 {
   struct SortedListElement *cur=list;
