@@ -76,31 +76,30 @@ set ylabel "successful iterations"
 set logscale y 10
 set output 'lab2_list-3.png'
 plot \
+    "< grep 'list-i-none,12,' lab2_list.csv" using (1):($3) \
+	with points pointtype 1 lc rgb "red" title "unprotected, T=12", \
+    "< grep 'list-d-none,12,' lab2_list.csv" using (2):($3) \
+	with points pointtype 1 lc rgb "red" title "", \
+    "< grep 'list-il-none,12,' lab2_list.csv" using (3):($3) \
+	with points pointtype 1 lc rgb "red" title "", \
+    "< grep 'list-dl-none,12,' lab2_list.csv" using (4):($3) \
+	with points pointtype 1 lc rgb "red" title "", \
     "< grep 'list-i-m,12,' lab2_list.csv" using (1):($3) \
-	with points pointtype 1 lc rgb "green" title "Mutex, T=12", \
+	with points pointtype 2 lc rgb "green" title "Mutex, T=12", \
     "< grep 'list-d-m,12,' lab2_list.csv" using (2):($3) \
-	with points pointtype 1 lc rgb "green" title "", \
+	with points pointtype 2 lc rgb "green" title "", \
     "< grep 'list-il-m,12,' lab2_list.csv" using (3):($3) \
-	with points pointtype 1 lc rgb "green" title "", \
+	with points pointtype 2 lc rgb "green" title "", \
     "< grep 'list-dl-m,12,' lab2_list.csv" using (4):($3) \
-	with points pointtype 1 lc rgb "green" title "", \
+	with points pointtype 2 lc rgb "green" title "", \
     "< grep 'list-i-s,12,' lab2_list.csv" using (1):($3) \
-	with points pointtype 2 lc rgb "blue" title "Spin-Lock, T=12", \
+	with points pointtype 6 lc rgb "blue" title "Spin-Lock, T=12", \
     "< grep 'list-d-s,12,' lab2_list.csv" using (2):($3) \
-	with points pointtype 2 lc rgb "blue" title "", \
+	with points pointtype 6 lc rgb "blue" title "", \
     "< grep 'list-il-s,12,' lab2_list.csv" using (3):($3) \
-	with points pointtype 2 lc rgb "blue" title "", \
+	with points pointtype 6 lc rgb "blue" title "", \
     "< grep 'list-dl-s,12,' lab2_list.csv" using (4):($3) \
-	with points pointtype 2 lc rgb "blue" title ""
-#    "< grep 'list-i-none,12,' lab2_list.csv" using (1):($3) \
-#	with points lc rgb "red" title "unprotected, T=12", \
-#    "< grep 'list-d-none,12,' lab2_list.csv" using (2):($3) \
-#	with points lc rgb "red" title "", \
-#    "< grep 'list-il-none,12,' lab2_list.csv" using (3):($3) \
-#	with points lc rgb "red" title "", \
-#    "< grep 'list-dl-none,12,' lab2_list.csv" using (4):($3) \
-#	with points lc rgb "red" title "", \
-
+	with points pointtype 6 lc rgb "blue" title ""
 #
 # "no valid points" is possible if even a single iteration can't run
 #
