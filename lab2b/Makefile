@@ -94,5 +94,5 @@ profile:
 clean:
 	rm -f lab2_list *.csv *.png *.tar.gz profile.out
 
-dist: README SortedList.h SortedList.c lab2_list.c Makefile lab2b_list.csv lab2b_list.gp lab2b_1.png lab2b_2.png lab2b_3.png lab2b_4.png lab2b_5.png
+dist: README SortedList.h SortedList.c lab2_list.c Makefile lab2b_list.csv lab2b_list.gp lab2b_1.png lab2b_2.png lab2b_3.png lab2b_4.png lab2b_5.png profile.out
 	tar -czf lab2b-404751542.tar.gz $^

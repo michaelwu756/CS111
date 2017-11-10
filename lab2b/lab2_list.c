@@ -66,9 +66,15 @@ void releaseLock(int subListNum)
     __sync_lock_release(spinLock+subListNum);
 }
 
-int simpleHash(const char *c)
+int simpleHash(const char *str)
 {
-  return ((int)*c)%lists;
+  unsigned long hash = 5381;
+  int c;
+
+  while ((c = *str++))
+    hash = ((hash << 5) + hash) + c;
+
+  return hash%lists;
 }
 
 void *threadMain(void *arg)
@@ -122,6 +128,17 @@ void *threadMain(void *arg)
   return waitingForLockTime;
 }
 
+const char *generateKey(int length)
+{
+  char * key=malloc((length+1)*sizeof(char));
+  int i;
+  for(i=0;i<length;i++)
+  {
+    key[i]=rand()%95+32;
+  }
+  key[length]='\0';
+  return (const char *)key;
+}
 
 void printCSV(int yield, char type, int threads, int iterations, int lists, struct timespec *startTime, struct timespec *endTime, long long waitForLockTime)
 {
@@ -236,7 +253,7 @@ int main(int argc, char  *argv[])
 
   elementArr = malloc(threads*iterations*sizeof(SortedListElement_t));
   for(i=0; i<threads*iterations; i++)
-    elementArr[i]=(SortedListElement_t){.next=NULL,.prev= NULL,.key="ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz"+rand()%52};
+    elementArr[i]=(SortedListElement_t){.next=NULL,.prev= NULL,.key=generateKey(10)};
 
   struct timespec startTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting start time");
