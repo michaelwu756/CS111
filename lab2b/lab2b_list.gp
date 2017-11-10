@@ -62,25 +62,27 @@ plot \
      "< head -14 lab2b_list.csv | grep -e 'list-none-m,[0-9]*,1000,1,'" using ($2):($7) \
 	title 'Average time per operation, 1000 iterations' with linespoints lc rgb 'green'
 
-set title "List-3: Iterations that run without failure"
+set title "List-3: Iterations sucessfully run, Lists=4, Yield=id"
 set xlabel "Threads"
 set logscale x 2
-set xrange [0.75:]
+set xrange [0.75:17]
 set ylabel "Successful Iterations"
 set logscale y 10
+set yrange [0.75:]
 set output 'lab2b_3.png'
 plot \
      "< grep -e 'list-id-none,[0-9]*,[0-9]*,4,' lab2b_list.csv" using ($2):($3) \
-	with points pointtype 1 lc rgb "red" title "Unprotected, Lists=4, Yield=id", \
+	with points pointtype 1 lc rgb "red" title "Unprotected", \
      "< grep -e 'list-id-m,[0-9]*,[0-9]*,4,' lab2b_list.csv" using ($2):($3) \
-	with points pointtype 2 lc rgb "green" title "Mutex, Lists=4, Yield=id", \
+	with points pointtype 2 lc rgb "green" title "Mutex", \
      "< grep -e 'list-id-s,[0-9]*,[0-9]*,4,' lab2b_list.csv" using ($2):($3) \
-	with points pointtype 6 lc rgb "blue" title "Spin-Lock, Lists=4, Yield=id"
+	with points pointtype 6 lc rgb "blue" title "Spin-Lock"
 #
 # "no valid points" is possible if even a single iteration can't run
 #
 
-set title "List-4: Throughput vs. Number of Threads for Mutex Synchronized Partitioned Lists"
+unset yrange
+set title "List-4: Throughput vs. Number of Threads, Mutex with Sublists"
 set xlabel "Threads"
 set logscale x 2
 set xrange [0.75:]
@@ -97,7 +99,7 @@ plot \
      "< tail -40 lab2b_list.csv | grep -e 'list-none-m,[0-9]*,1000,16,' lab2b_list.csv" using ($2):(1000000000/($7)) \
 	title 'Lists=16' with linespoints lc rgb 'purple'
 
-set title "List-5: Throughput vs. Number of Threads for Spin-Lock Synchronized Partitioned Lists"
+set title "List-5: Throughput vs. Number of Threads, Spin-Lock with Sublists"
 set xlabel "Threads"
 set logscale x 2
 set xrange [0.75:]

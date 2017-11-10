@@ -74,7 +74,7 @@ profile.out: lab2_list Makefile
 	-rm -f ./raw.gperf
 	LD_PRELOAD=/u/cs/ugrad/wum/lib/libprofiler.so.0 CPUPROFILE=./raw.gperf ./lab2_list --threads=12 --iterations=1000 --sync=s
 	pprof --text ./lab2_list ./raw.gperf > $@
-	pprof --list=FILLIN ./lab2_list ./raw.gperf >> $@
+	pprof --list=threadMain ./lab2_list ./raw.gperf >> $@
 	rm -f ./raw.gperf
 
 .PHONY: default clean dist test graphs profile

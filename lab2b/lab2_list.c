@@ -11,10 +11,11 @@
 int iterations;
 int opt_yield=0;
 char testType='\0';
-pthread_mutex_t mutex;
-int syncLock=0;
-SortedList_t list;
+pthread_mutex_t *mutex;
+int *spinLock=0;
+SortedList_t *list;
 SortedListElement_t *elementArr;
+int lists;
 void checkForError(int result, char *message)
 {
   if(result==-1)
@@ -26,7 +27,7 @@ void checkForError(int result, char *message)
 
 void printUsage(char *progName)
 {
-  fprintf(stderr, "Usage: %s [--threads=N] [--iterations==N] [--yield=[idl]] [--sync=m|s]\n", progName);
+  fprintf(stderr, "Usage: %s [--threads=N] [--iterations==N] [--yield=[idl]] [--sync=m|s] [--lists=N]\n", progName);
   exit(1);
 }
 
@@ -48,21 +49,26 @@ long long getElapsedTimeNsec(struct timespec *startTime, struct timespec *endTim
   return (long long)(elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec);
 }
 
-void acquireLock()
+void acquireLock(int subListNum)
 {
   if(testType=='m')
-    pthread_mutex_lock(&mutex);
+    pthread_mutex_lock(mutex+subListNum);
   if(testType=='s')
-    while(__sync_lock_test_and_set(&syncLock, 1)!=0)
+    while(__sync_lock_test_and_set(spinLock+subListNum, 1)!=0)
       ;
 }
 
-void releaseLock()
+void releaseLock(int subListNum)
 {
   if(testType=='m')
-    pthread_mutex_unlock(&mutex);
+    pthread_mutex_unlock(mutex+subListNum);
   if(testType=='s')
-    __sync_lock_release(&syncLock);
+    __sync_lock_release(spinLock+subListNum);
+}
+
+int simpleHash(const char *c)
+{
+  return ((int)*c)%lists;
 }
 
 void *threadMain(void *arg)
@@ -75,30 +81,40 @@ void *threadMain(void *arg)
   struct timespec endTime;
   for(i=0; i<iterations; i++)
   {
+    int hash=simpleHash(elementArr[threadNum*iterations+i].key);
     checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
-    acquireLock();
+    acquireLock(hash);
     checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
-    SortedList_insert(&list,elementArr+threadNum*iterations+i);
-    releaseLock();
+    SortedList_insert(list+hash,elementArr+threadNum*iterations+i);
+    releaseLock(hash);
   }
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
-  acquireLock();
+  for(i=0; i<lists; i++)
+    acquireLock(i);
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
   *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
-  if(SortedList_length(&list)==-1)
-    corruptedList();
-  releaseLock();
+  int length=0;
+  for(i=0; i<lists; i++)
+  {
+    int subListLength=SortedList_length(list+i);
+    if(subListLength==-1)
+      corruptedList();
+    length+=subListLength;
+  }
+  for(i=0;i<lists;i++)
+    releaseLock(i);
   for(i=0; i<iterations; i++)
   {
+    int hash=simpleHash(elementArr[threadNum*iterations+i].key);
     checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
-    acquireLock();
+    acquireLock(hash);
     checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
-    SortedListElement_t *element = SortedList_lookup(&list, elementArr[threadNum*iterations+i].key);
+    SortedListElement_t *element = SortedList_lookup(list+hash, elementArr[threadNum*iterations+i].key);
     if(element==NULL || SortedList_delete(element)==1)
       corruptedList();
-    releaseLock();
+    releaseLock(hash);
   }
   free(arg);
   if(testType=='\0')
@@ -107,7 +123,7 @@ void *threadMain(void *arg)
 }
 
 
-void printCSV(int yield, char type, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, long long waitForLockTime)
+void printCSV(int yield, char type, int threads, int iterations, int lists, struct timespec *startTime, struct timespec *endTime, long long waitForLockTime)
 {
   long long elapsedTimeNsec = getElapsedTimeNsec(startTime, endTime);
   long long operations = iterations*threads*3;
@@ -137,7 +153,7 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
     strcpy(t,"none");
   else
     sprintf(t, "%c", type);
-  printf("list-%s-%s,%d,%d,1,%lld,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations, waitForLockTime/operations);
+  printf("list-%s-%s,%d,%d,%d,%lld,%lld,%lld,%lld\n",y,t,threads,iterations,lists,operations,elapsedTimeNsec,elapsedTimeNsec/operations, waitForLockTime/operations);
 }
 
 int main(int argc, char  *argv[])
@@ -148,12 +164,14 @@ int main(int argc, char  *argv[])
     {"iterations", required_argument, 0, 'i'},
     {"sync", required_argument, 0, 's'},
     {"yield", required_argument, 0, 'y'},
+    {"lists", required_argument, 0, 'l'},
     {0, 0, 0, 0}
   };
 
   signed char c;
   int threads=1;
   iterations=1;
+  lists=1;
   int i;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
@@ -188,22 +206,33 @@ int main(int argc, char  *argv[])
           i++;
         }
         break;
+      case 'l':
+        lists=atoi(optarg);
+        break;
       default:
         printUsage(argv[0]);
         break;
     }
   }
 
-  if(threads==0 || iterations==0 || (testType!='\0' && testType!='m' && testType!='s'))
+  if(threads==0 || iterations==0 || lists==0 || (testType!='\0' && testType!='m' && testType!='s'))
     printUsage(argv[0]);
 
   signal(SIGSEGV, segfaultHandler);
 
   srand(time(NULL));
 
-  pthread_mutex_init(&mutex, NULL);
+  mutex=malloc(lists*sizeof(pthread_mutex_t));
+  for(i=0;i<lists;i++)
+    pthread_mutex_init(mutex+i, NULL);
 
-  list=(SortedList_t){.next=&list,.prev= &list,.key=NULL};
+  spinLock=malloc(lists*sizeof(int));
+  for(i=0;i<lists;i++)
+    spinLock[i]=0;
+
+  list=malloc(lists*sizeof(SortedList_t));
+  for(i=0;i<lists;i++)
+    list[i]=(SortedList_t){.next=list+i,.prev=list+i,.key=NULL};
 
   elementArr = malloc(threads*iterations*sizeof(SortedListElement_t));
   for(i=0; i<threads*iterations; i++)
@@ -232,12 +261,17 @@ int main(int argc, char  *argv[])
   struct timespec endTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
 
-  if(SortedList_length(&list)!=0)
-    corruptedList();
+  for(i=0;i<lists;i++)
+    if(SortedList_length(list+i)!=0)
+      corruptedList();
 
-  printCSV(opt_yield, testType, threads, iterations, &startTime, &endTime, waitingForLockTime);
+  printCSV(opt_yield, testType, threads, iterations, lists,  &startTime, &endTime, waitingForLockTime);
 
   free(elementArr);
-  pthread_mutex_destroy(&mutex);
+  for(i=0;i<lists;i++)
+    pthread_mutex_destroy(mutex+i);
+  free(mutex);
+  free(spinLock);
+  free(list);
   return 0;
 }
