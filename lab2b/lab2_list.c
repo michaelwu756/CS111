@@ -88,17 +88,17 @@ void *threadMain(void *arg)
   for(i=0; i<iterations; i++)
   {
     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
-    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
+    checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
     acquireLock(hash);
-    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+    checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
     SortedList_insert(list+hash,elementArr+threadNum*iterations+i);
     releaseLock(hash);
   }
-  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
+  checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
   for(i=0; i<lists; i++)
     acquireLock(i);
-  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+  checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
   *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
   int length=0;
   for(i=0; i<lists; i++)
@@ -113,9 +113,9 @@ void *threadMain(void *arg)
   for(i=0; i<iterations; i++)
   {
     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
-    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
+    checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
     acquireLock(hash);
-    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+    checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
     SortedListElement_t *element = SortedList_lookup(list+hash, elementArr[threadNum*iterations+i].key);
     if(element==NULL || SortedList_delete(element)==1)
@@ -256,7 +256,7 @@ int main(int argc, char  *argv[])
     elementArr[i]=(SortedListElement_t){.next=NULL,.prev= NULL,.key=generateKey(10)};
 
   struct timespec startTime;
-  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting start time");
+  checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting start time");
 
   pthread_t thread[threads];
   for(i=0; i<threads; i++)
@@ -276,7 +276,7 @@ int main(int argc, char  *argv[])
   }
 
   struct timespec endTime;
-  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
+  checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting end time");
 
   for(i=0;i<lists;i++)
     if(SortedList_length(list+i)!=0)
@@ -284,6 +284,8 @@ int main(int argc, char  *argv[])
 
   printCSV(opt_yield, testType, threads, iterations, lists,  &startTime, &endTime, waitingForLockTime);
 
+  for(i=0; i<threads*iterations; i++)
+    free((void *)(elementArr[i].key));
   free(elementArr);
   for(i=0;i<lists;i++)
     pthread_mutex_destroy(mutex+i);
