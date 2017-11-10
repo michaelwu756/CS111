@@ -1,0 +1,139 @@
+Total: 1190 samples
+     794  66.7%  66.7%      794  66.7% acquireLock
+     313  26.3%  93.0%      313  26.3% __strcmp_sse42
+      39   3.3%  96.3%      199  16.7% SortedList_insert
+      31   2.6%  98.9%      193  16.2% SortedList_lookup
+       9   0.8%  99.7%        9   0.8% _init
+       1   0.1%  99.7%        1   0.1% 0x00007ffc26c8e8da
+       1   0.1%  99.8%        1   0.1% 0x00007ffc26c8e988
+       1   0.1%  99.9%        1   0.1% SortedList_length
+       1   0.1% 100.0%     1190 100.0% threadMain
+       0   0.0% 100.0%        2   0.2% __GI___clock_gettime
+       0   0.0% 100.0%     1190 100.0% __clone
+       0   0.0% 100.0%     1190 100.0% start_thread
+ROUTINE ====================== threadMain in /u/cs/ugrad/wum/Documents/CS111/lab2b/lab2_list.c
+     1   1190 Total samples (flat / cumulative)
+     .      .   76: 
+     .      .   77:   return hash%lists;
+     .      .   78: }
+     .      .   79: 
+     .      .   80: void *threadMain(void *arg)
+---
+     .      .   81: {
+     .      .   82:   int threadNum=*(int *)arg;
+     .      .   83:   int i;
+     .      .   84:   long long *waitingForLockTime=malloc(sizeof(long long));
+     .      .   85:   *waitingForLockTime=0;
+     .      .   86:   struct timespec startTime;
+     .      .   87:   struct timespec endTime;
+     .      .   88:   for(i=0; i<iterations; i++)
+     .      .   89:   {
+     .      .   90:     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
+     1      2   91:     checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .    375   92:     acquireLock(hash);
+     .      .   93:     checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .   94:     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .    199   95:     SortedList_insert(list+hash,elementArr+threadNum*iterations+i);
+     .      .   96:     releaseLock(hash);
+     .      .   97:   }
+     .      .   98:   checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .      .   99:   for(i=0; i<lists; i++)
+     .      .  100:     acquireLock(i);
+     .      .  101:   checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .  102:   *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .      .  103:   int length=0;
+     .      .  104:   for(i=0; i<lists; i++)
+     .      .  105:   {
+     .      1  106:     int subListLength=SortedList_length(list+i);
+     .      .  107:     if(subListLength==-1)
+     .      .  108:       corruptedList();
+     .      .  109:     length+=subListLength;
+     .      .  110:   }
+     .      .  111:   for(i=0;i<lists;i++)
+     .      .  112:     releaseLock(i);
+     .      .  113:   for(i=0; i<iterations; i++)
+     .      .  114:   {
+     .      .  115:     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
+     .      .  116:     checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .    419  117:     acquireLock(hash);
+     .      1  118:     checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .  119:     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .    193  120:     SortedListElement_t *element = SortedList_lookup(list+hash, elementArr[threadNum*iterations+i].key);
+     .      .  121:     if(element==NULL || SortedList_delete(element)==1)
+     .      .  122:       corruptedList();
+     .      .  123:     releaseLock(hash);
+     .      .  124:   }
+     .      .  125:   free(arg);
+     .      .  126:   if(testType=='\0')
+     .      .  127:     *waitingForLockTime=0;
+     .      .  128:   return waitingForLockTime;
+     .      .  129: }
+---
+     .      .  130: 
+     .      .  131: const char *generateKey(int length)
+     .      .  132: {
+     .      .  133:   char * key=malloc((length+1)*sizeof(char));
+     .      .  134:   int i;
+ROUTINE ====================== threadMain in /u/cs/ugrad/wum/Documents/CS111/lab2b/lab2_list.c
+     1   1190 Total samples (flat / cumulative)
+     .      .   76: 
+     .      .   77:   return hash%lists;
+     .      .   78: }
+     .      .   79: 
+     .      .   80: void *threadMain(void *arg)
+---
+     .      .   81: {
+     .      .   82:   int threadNum=*(int *)arg;
+     .      .   83:   int i;
+     .      .   84:   long long *waitingForLockTime=malloc(sizeof(long long));
+     .      .   85:   *waitingForLockTime=0;
+     .      .   86:   struct timespec startTime;
+     .      .   87:   struct timespec endTime;
+     .      .   88:   for(i=0; i<iterations; i++)
+     .      .   89:   {
+     .      .   90:     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
+     1      2   91:     checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .    375   92:     acquireLock(hash);
+     .      .   93:     checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .   94:     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .    199   95:     SortedList_insert(list+hash,elementArr+threadNum*iterations+i);
+     .      .   96:     releaseLock(hash);
+     .      .   97:   }
+     .      .   98:   checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .      .   99:   for(i=0; i<lists; i++)
+     .      .  100:     acquireLock(i);
+     .      .  101:   checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .  102:   *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .      .  103:   int length=0;
+     .      .  104:   for(i=0; i<lists; i++)
+     .      .  105:   {
+     .      1  106:     int subListLength=SortedList_length(list+i);
+     .      .  107:     if(subListLength==-1)
+     .      .  108:       corruptedList();
+     .      .  109:     length+=subListLength;
+     .      .  110:   }
+     .      .  111:   for(i=0;i<lists;i++)
+     .      .  112:     releaseLock(i);
+     .      .  113:   for(i=0; i<iterations; i++)
+     .      .  114:   {
+     .      .  115:     int hash=simpleHash(elementArr[threadNum*iterations+i].key);
+     .      .  116:     checkForError(clock_gettime(CLOCK_MONOTONIC, &startTime), "getting lock acquisition start time");
+     .    419  117:     acquireLock(hash);
+     .      1  118:     checkForError(clock_gettime(CLOCK_MONOTONIC, &endTime), "getting lock acquisition end time");
+     .      .  119:     *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
+     .    193  120:     SortedListElement_t *element = SortedList_lookup(list+hash, elementArr[threadNum*iterations+i].key);
+     .      .  121:     if(element==NULL || SortedList_delete(element)==1)
+     .      .  122:       corruptedList();
+     .      .  123:     releaseLock(hash);
+     .      .  124:   }
+     .      .  125:   free(arg);
+     .      .  126:   if(testType=='\0')
+     .      .  127:     *waitingForLockTime=0;
+     .      .  128:   return waitingForLockTime;
+     .      .  129: }
+---
+     .      .  130: 
+     .      .  131: const char *generateKey(int length)
+     .      .  132: {
+     .      .  133:   char * key=malloc((length+1)*sizeof(char));
+     .      .  134:   int i;
