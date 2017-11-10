@@ -42,6 +42,12 @@ void segfaultHandler(int sig)
   exit(2);
 }
 
+long long getElapsedTimeNsec(struct timespec *startTime, struct timespec *endTime)
+{
+  struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
+  return (long long)(elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec);
+}
+
 void acquireLock()
 {
   if(testType=='m')
@@ -63,32 +69,47 @@ void *threadMain(void *arg)
 {
   int threadNum=*(int *)arg;
   int i;
+  long long *waitingForLockTime=malloc(sizeof(long long));
+  *waitingForLockTime=0;
+  struct timespec startTime;
+  struct timespec endTime;
   for(i=0; i<iterations; i++)
   {
+    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
     acquireLock();
+    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+    *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
     SortedList_insert(&list,elementArr+threadNum*iterations+i);
     releaseLock();
   }
+  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
   acquireLock();
+  checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+  *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
   if(SortedList_length(&list)==-1)
     corruptedList();
   releaseLock();
   for(i=0; i<iterations; i++)
   {
+    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &startTime), "getting lock acquisition start time");
     acquireLock();
+    checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting lock acquisition end time");
+    *waitingForLockTime+=getElapsedTimeNsec(&startTime, &endTime);
     SortedListElement_t *element = SortedList_lookup(&list, elementArr[threadNum*iterations+i].key);
     if(element==NULL || SortedList_delete(element)==1)
       corruptedList();
     releaseLock();
   }
   free(arg);
-  return NULL;
+  if(testType=='\0')
+    *waitingForLockTime=0;
+  return waitingForLockTime;
 }
 
-void printCSV(int yield, char type, int threads, int iterations, struct timespec *startTime, struct timespec *endTime)
+
+void printCSV(int yield, char type, int threads, int iterations, struct timespec *startTime, struct timespec *endTime, long long waitForLockTime)
 {
-  struct timespec elapsedTime = {(*endTime).tv_sec-(*startTime).tv_sec,(*endTime).tv_nsec-(*startTime).tv_nsec};
-  long long elapsedTimeNsec = elapsedTime.tv_sec*1000000000+elapsedTime.tv_nsec;
+  long long elapsedTimeNsec = getElapsedTimeNsec(startTime, endTime);
   long long operations = iterations*threads*3;
   char y[5];
   int i=0;
@@ -116,7 +137,7 @@ void printCSV(int yield, char type, int threads, int iterations, struct timespec
     strcpy(t,"none");
   else
     sprintf(t, "%c", type);
-  printf("list-%s-%s,%d,%d,1,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations);
+  printf("list-%s-%s,%d,%d,1,%lld,%lld,%lld,%lld\n",y,t,threads,iterations,operations,elapsedTimeNsec,elapsedTimeNsec/operations, waitForLockTime/operations);
 }
 
 int main(int argc, char  *argv[])
@@ -182,7 +203,6 @@ int main(int argc, char  *argv[])
 
   pthread_mutex_init(&mutex, NULL);
 
-
   list=(SortedList_t){.next=&list,.prev= &list,.key=NULL};
 
   elementArr = malloc(threads*iterations*sizeof(SortedListElement_t));
@@ -199,8 +219,15 @@ int main(int argc, char  *argv[])
     *threadNum=i;
     checkForError(pthread_create(&thread[i],NULL,threadMain,threadNum),"making thread");
   }
+
+  long long waitingForLockTime=0;
   for(i=0; i<threads; i++)
-    pthread_join(thread[i],NULL);
+  {
+    void *localWaitingForLockTime;
+    pthread_join(thread[i],&localWaitingForLockTime);
+    waitingForLockTime+=*(long long *)localWaitingForLockTime;
+    free(localWaitingForLockTime);
+  }
 
   struct timespec endTime;
   checkForError(clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &endTime), "getting end time");
@@ -208,7 +235,7 @@ int main(int argc, char  *argv[])
   if(SortedList_length(&list)!=0)
     corruptedList();
 
-  printCSV(opt_yield, testType, threads, iterations, &startTime, &endTime);
+  printCSV(opt_yield, testType, threads, iterations, &startTime, &endTime, waitingForLockTime);
 
   free(elementArr);
   pthread_mutex_destroy(&mutex);
