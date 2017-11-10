@@ -15,7 +15,6 @@ TEST_LIST_3_LISTS = 4
 
 TEST_LIST_4_ITERATIONS = 1000
 TEST_LIST_4_THREADS = 1 2 4 8 12
-TEST_LIST_4_YIELD_OPTIONS = id
 TEST_LIST_4_SYNC_OPTIONS = m s
 TEST_LIST_4_LISTS = 1 4 8 16
 
@@ -60,11 +59,9 @@ lab2b_list.csv: lab2_list
 
 	for list in $(TEST_LIST_4_LISTS) ; do \
 		for sync_option in $(TEST_LIST_4_SYNC_OPTIONS) ; do \
-			for yield_option in $(TEST_LIST_4_YIELD_OPTIONS) ; do \
-				for threads in $(TEST_LIST_4_THREADS) ; do \
-					for iterations in $(TEST_LIST_4_ITERATIONS) ; do \
-						./lab2_list --threads=$$threads --iterations=$$iterations --yield=$$yield_option --sync=$$sync_option --lists=$$list >> $@; \
-					done \
+			for threads in $(TEST_LIST_4_THREADS) ; do \
+				for iterations in $(TEST_LIST_4_ITERATIONS) ; do \
+					./lab2_list --threads=$$threads --iterations=$$iterations --sync=$$sync_option --lists=$$list >> $@; \
 				done \
 			done \
 		done \
@@ -95,7 +92,7 @@ profile:
 	make profile.out
 
 clean:
-	rm -f lab2_list *.csv *.png *.tar.gz
+	rm -f lab2_list *.csv *.png *.tar.gz profile.out
 
 dist: README SortedList.h SortedList.c lab2_list.c Makefile lab2b_list.csv lab2b_list.gp lab2b_1.png lab2b_2.png lab2b_3.png lab2b_4.png lab2b_5.png
 	tar -czf lab2b-404751542.tar.gz $^
