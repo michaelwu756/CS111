@@ -114,4 +114,4 @@ plot \
      "< tail -40 lab2b_list.csv | grep -e 'list-none-s,[0-9]*,1000,8,'" using ($2):(1000000000/($7)) \
 	title 'Lists=8' with linespoints lc rgb 'blue', \
      "< tail -40 lab2b_list.csv | grep -e 'list-none-s,[0-9]*,1000,16,'" using ($2):(1000000000/($7)) \
-	title 'Lists=12' with linespoints lc rgb 'purple'
+	title 'Lists=16' with linespoints lc rgb 'purple'
