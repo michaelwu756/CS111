@@ -10,10 +10,15 @@
 #include<getopt.h>
 #include<string.h>
 #include<poll.h>
+#include<math.h>
 const int B = 4275;
 const int R0 = 100000;
 
 int timerfd;
+char scale;
+int period;
+int logfd;
+int stopped=0;
 void checkForError(int result, char *message)
 {
   if(result==-1)
@@ -35,9 +40,9 @@ void sig_handler(int sig)
   exit(1);
 }
 
-void setPeriod(int timerfd, int period)
+void setTimerPeriod(int timerfd, int per)
 {
-  struct itimerspec time={{period,0},{period,0}};
+  struct itimerspec time={{per,0},{per,0}};
   checkForError(timerfd_settime(timerfd, 0, &time, NULL), "changing timer period");
 }
 
@@ -65,15 +70,27 @@ void parse(char *parseBuf)
   }
   else if(strcmp(command, "STOP")==0)
   {
+    stopped=1;
+    if(logfd!=-1)
+      checkForError(write(logfd, "STOP\n", 5), "writing to log");
   }
   else if(strcmp(command, "START")==0)
   {
+    stopped=0;
+    if(logfd!=-1)
+      checkForError(write(logfd, "START\n", 6), "writing to log");
   }
   else if(strcmp(command, "SCALE=F")==0)
   {
+    scale='F';
+    if(logfd!=-1)
+      checkForError(write(logfd, "SCALE=F\n", 8), "writing to log");
   }
   else if(strcmp(command, "SCALE=C")==0)
   {
+    scale='C';
+    if(logfd!=-1)
+      checkForError(write(logfd, "SCALE=C\n", 8), "writing to log");
   }
   else if(strncmp(command, "PERIOD=", 7)==0)
   {
@@ -81,10 +98,31 @@ void parse(char *parseBuf)
     if(arg<=0)
       fprintf(stderr, "Argument must be integer greater than 0\n");
     else
-      setPeriod(timerfd,arg);
+    {
+      period=arg;
+      setTimerPeriod(timerfd,arg);
+      char writeBuf[256];
+      sprintf(writeBuf, "PERIOD=%d\n", arg);
+      if(logfd!=-1)
+        checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+    }
   }
   else
     fprintf(stderr, "Unrecognized Command\n");
+}
+
+double getTempReading(mraa_aio_context aioFd)
+{
+  int a=mraa_aio_read(aioFd);
+  double R=1023.0/a-1.0;
+  R*=R0;
+  double result = 1.0/(log(R/R0)/B+1/298.15)-273.15;
+  if(scale=='F')
+  {
+    result*=1.8;
+    result+=32;
+  }
+  return result;
 }
 
 int main(int argc, char *argv[])
@@ -97,9 +135,9 @@ int main(int argc, char *argv[])
       {0, 0, 0, 0}
     };
 
-  int period=1;
-  char scale='F';
-  int logfd=-1;
+  period=1;
+  scale='F';
+  logfd=-1;
   signed char c;
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
@@ -119,7 +157,6 @@ int main(int argc, char *argv[])
         break;
     }
   }
-  printf("scale:%c period:%d\n",scale, period);
   if(period<=0 || (scale!='F' && scale!='C'))
     printUsage(argv[0]);
 
@@ -127,7 +164,14 @@ int main(int argc, char *argv[])
 
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
-  setPeriod(timerfd, period);
+  setTimerPeriod(timerfd, period);
+
+  mraa_aio_context adc_a0= mraa_aio_init(1);
+  if(adc_a0==NULL)
+  {
+    fprintf(stderr, "Nothing connected to a1\n");
+    exit(1);
+  }
 
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{STDIN_FILENO,POLLIN,0}};
   char *parseBuf=malloc(sizeof(char));
@@ -153,8 +197,13 @@ int main(int argc, char *argv[])
         checkForError(time(&rawtime),"getting raw time");
         struct tm *locTime=localtime(&rawtime);
         char writeBuf[50];
-        sprintf(writeBuf, "%02d:%02d:%02d \n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
-        checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+        sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0));
+        if(!stopped)
+        {
+          checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+          if(logfd!=-1)
+            checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+        }
       }
       if(pollingArr[1].revents & POLLIN)
       {
@@ -177,33 +226,10 @@ int main(int argc, char *argv[])
       }
     }
   }
-  /*
-  mraa_aio_context adc_a0;
-  uint16_t adc_value = 0;
-  float adc_value_float = 0.0;
-  mraa_result_t r = MRAA_SUCCESS;
 
-  adc_a0 = mraa_aio_init(1);
-  if(adc_a0==NULL)
-  {
-    fprintf(stderr, "Nothing connected to a%d\n", i);
-    exit(1);
-  }
-
-
-  int running = 0;
-  while (running == 0) {
-    adc_value = mraa_aio_read(adc_a0);
-    adc_value_float = mraa_aio_read_float(adc_a0);
-    fprintf(stdout, "ADC A0 read %X - %d\n", adc_value, adc_value);
-    fprintf(stdout, "ADC A0 read float - %.5f (Ctrl+C to exit)\n", adc_value_float);
-  }
-  r = mraa_aio_close(adc_a0);
-  if (r != MRAA_SUCCESS) {
-    mraa_result_print(r);
-    }*/
-
-  checkForError(close(logfd), "closing logfile");
+  if(logfd!=-1)
+    checkForError(close(logfd), "closing logfile");
   free(parseBuf);
+  mraa_aio_close(adc_a0);
   return 0;
 }
