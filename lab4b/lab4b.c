@@ -1,4 +1,5 @@
 #include<mraa/aio.h>
+#include<mraa/gpio.h>
 #include<mraa/types.h>
 #include<signal.h>
 #include<stdio.h>
@@ -19,6 +20,7 @@ char scale;
 int period;
 int logfd;
 int stopped=0;
+int running=1;
 void checkForError(int result, char *message)
 {
   if(result==-1)
@@ -34,16 +36,23 @@ void printUsage(char *progName)
   exit(1);
 }
 
-void sig_handler(int sig)
-{
-  fprintf(stderr, "Caught sigint signal number %d\n", sig);
-  exit(1);
-}
-
 void setTimerPeriod(int timerfd, int per)
 {
   struct itimerspec time={{per,0},{per,0}};
   checkForError(timerfd_settime(timerfd, 0, &time, NULL), "changing timer period");
+}
+
+void shutdown()
+{
+  time_t rawtime;
+  checkForError(time(&rawtime),"getting raw time");
+  struct tm *locTime=localtime(&rawtime);
+  char writeBuf[50];
+  sprintf(writeBuf, "%02d:%02d:%02d SHUTDOWN\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
+  checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+  if(logfd!=-1)
+    checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+  running=0;
 }
 
 void parse(char *parseBuf)
@@ -67,6 +76,9 @@ void parse(char *parseBuf)
   parseBuf[i]='\0';
   if(strcmp(command, "OFF")==0)
   {
+    if(logfd!=-1)
+      checkForError(write(logfd, "OFF\n", 4), "writing to log");
+    shutdown();
   }
   else if(strcmp(command, "STOP")==0)
   {
@@ -160,18 +172,26 @@ int main(int argc, char *argv[])
   if(period<=0 || (scale!='F' && scale!='C'))
     printUsage(argv[0]);
 
-  signal(SIGINT, sig_handler);
-
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
   setTimerPeriod(timerfd, period);
 
+  mraa_init();
   mraa_aio_context adc_a0= mraa_aio_init(1);
   if(adc_a0==NULL)
   {
-    fprintf(stderr, "Nothing connected to a1\n");
+    fprintf(stderr, "Cannot init AIN0, try running as root or verify grove connection\n");
     exit(1);
   }
+
+  mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
+  if(gpio_g115==NULL)
+  {
+    fprintf(stderr, "Cannot init GPIO_115, try running as root or verify grove connection\n");
+    exit(1);
+  }
+  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);
+
 
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{STDIN_FILENO,POLLIN,0}};
   char *parseBuf=malloc(sizeof(char));
@@ -183,7 +203,7 @@ int main(int argc, char *argv[])
   *parseBuf='\0';
   int parseLength=1;
   int i;
-  while(1)
+  while(running==1)
   {
     int pollResult = poll(pollingArr, 2, 0);
     checkForError(pollResult, "polling");
@@ -197,8 +217,8 @@ int main(int argc, char *argv[])
         checkForError(time(&rawtime),"getting raw time");
         struct tm *locTime=localtime(&rawtime);
         char writeBuf[50];
-        sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0));
-        if(!stopped)
+        sprintf(writeBuf, "%02d:%02d:%02d %.1f %d\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0), mraa_gpio_read(gpio_g115));
+        if(stopped==0)
         {
           checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
           if(logfd!=-1)
@@ -231,5 +251,7 @@ int main(int argc, char *argv[])
     checkForError(close(logfd), "closing logfile");
   free(parseBuf);
   mraa_aio_close(adc_a0);
+  mraa_gpio_close(gpio_g115);
+  mraa_deinit();
   return 0;
 }
