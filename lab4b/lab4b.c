@@ -55,7 +55,7 @@ void shutdown()
   running=0;
 }
 
-void parse(char *parseBuf)
+void parse(char *parseBuf, int *parseLength)
 {
   int end;
   for(end=0; parseBuf[end]!='\n'; end++)
@@ -74,36 +74,22 @@ void parse(char *parseBuf)
     parseBuf[i]=parseBuf[i+end+1];
   }
   parseBuf[i]='\0';
+  *parseLength-=end+1;
+  if(logfd!=-1)
+  {
+    checkForError(write(logfd, command, strlen(command)), "writing to log");
+    checkForError(write(logfd, "\n", 1), "writing to log");
+  }
   if(strcmp(command, "OFF")==0)
-  {
-    if(logfd!=-1)
-      checkForError(write(logfd, "OFF\n", 4), "writing to log");
     shutdown();
-  }
   else if(strcmp(command, "STOP")==0)
-  {
     stopped=1;
-    if(logfd!=-1)
-      checkForError(write(logfd, "STOP\n", 5), "writing to log");
-  }
   else if(strcmp(command, "START")==0)
-  {
     stopped=0;
-    if(logfd!=-1)
-      checkForError(write(logfd, "START\n", 6), "writing to log");
-  }
   else if(strcmp(command, "SCALE=F")==0)
-  {
     scale='F';
-    if(logfd!=-1)
-      checkForError(write(logfd, "SCALE=F\n", 8), "writing to log");
-  }
   else if(strcmp(command, "SCALE=C")==0)
-  {
     scale='C';
-    if(logfd!=-1)
-      checkForError(write(logfd, "SCALE=C\n", 8), "writing to log");
-  }
   else if(strncmp(command, "PERIOD=", 7)==0)
   {
     int arg=atoi(command+7);
@@ -113,10 +99,6 @@ void parse(char *parseBuf)
     {
       period=arg;
       setTimerPeriod(timerfd,arg);
-      char writeBuf[256];
-      sprintf(writeBuf, "PERIOD=%d\n", arg);
-      if(logfd!=-1)
-        checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
     }
   }
   else
@@ -161,7 +143,7 @@ int main(int argc, char *argv[])
         scale=optarg[0];
         break;
       case 'l':
-        logfd=open(optarg, O_WRONLY|O_CREAT, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
+        logfd=open(optarg, O_WRONLY|O_CREAT|O_TRUNC, S_IRUSR|S_IWUSR|S_IRGRP|S_IWGRP|S_IROTH|S_IWOTH);
         checkForError(logfd, "opening logfile");
         break;
       default:
@@ -176,7 +158,6 @@ int main(int argc, char *argv[])
   checkForError(timerfd, "creating timer");
   setTimerPeriod(timerfd, period);
 
-  mraa_init();
   mraa_aio_context adc_a0= mraa_aio_init(1);
   if(adc_a0==NULL)
   {
@@ -184,13 +165,13 @@ int main(int argc, char *argv[])
     exit(1);
   }
 
-  mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
+  /*mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
   if(gpio_g115==NULL)
   {
     fprintf(stderr, "Cannot init GPIO_115, try running as root or verify grove connection\n");
     exit(1);
   }
-  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);
+  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);*/
 
 
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{STDIN_FILENO,POLLIN,0}};
@@ -201,7 +182,8 @@ int main(int argc, char *argv[])
     exit(1);
   }
   *parseBuf='\0';
-  int parseLength=1;
+  int parseLength=0;
+  int allocSize=1;
   int i;
   while(running==1)
   {
@@ -217,7 +199,7 @@ int main(int argc, char *argv[])
         checkForError(time(&rawtime),"getting raw time");
         struct tm *locTime=localtime(&rawtime);
         char writeBuf[50];
-        sprintf(writeBuf, "%02d:%02d:%02d %.1f %d\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0), mraa_gpio_read(gpio_g115));
+        sprintf(writeBuf, "%02d:%02d:%02d %.1f %d\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(adc_a0), 0);//mraa_gpio_read(gpio_g115));
         if(stopped==0)
         {
           checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
@@ -230,8 +212,12 @@ int main(int argc, char *argv[])
         char readBuf[256];
         int numRead=read(STDIN_FILENO, readBuf, 255);
         checkForError(numRead, "reading from keyboard");
-        int newParseLength = parseLength+numRead;
-        parseBuf=realloc(parseBuf, newParseLength*sizeof(char));
+        parseLength+=numRead;
+        while(parseLength>=allocSize)
+        {
+          allocSize*=2;
+          parseBuf=realloc(parseBuf, allocSize*sizeof(char));
+        }
         if(parseBuf==NULL)
         {
           fprintf(stderr, "Error realloc failed");
@@ -241,7 +227,7 @@ int main(int argc, char *argv[])
         for(i=0; i<numRead; i++)
         {
           if(readBuf[i]=='\n')
-            parse(parseBuf);
+            parse(parseBuf, &parseLength);
         }
       }
     }
@@ -251,7 +237,6 @@ int main(int argc, char *argv[])
     checkForError(close(logfd), "closing logfile");
   free(parseBuf);
   mraa_aio_close(adc_a0);
-  mraa_gpio_close(gpio_g115);
-  mraa_deinit();
+  //mraa_gpio_close(gpio_g115);
   return 0;
 }
