@@ -213,7 +213,7 @@ int main(int argc, char *argv[])
       {
         char readBuf[256];
         checkForError(read(timerfd, readBuf, O_NONBLOCK), "reading timerfd");
-	generateReport(adc_a0);
+        generateReport(adc_a0);
       }
       if(pollingArr[1].revents & POLLIN)
       {
