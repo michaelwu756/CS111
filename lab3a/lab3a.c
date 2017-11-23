@@ -49,7 +49,7 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
   struct ext2_inode inode;
   checkForError(pread(fileSystemFD, &inode, inodeSize, inodeTable*blockSize+inodeIndex*inodeSize), "reading inode");
 
-  uint32_t inodeNumber=groupNumber*inodesPerGroup+inodeIndex;
+  uint32_t inodeNumber=groupNumber*inodesPerGroup+inodeIndex+1;
   uint16_t fileTypeVal=(inode.i_mode>>12)&0xF;
   char fileType='?';
   if(fileTypeVal==0x4)
@@ -71,9 +71,9 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
   char changeTime[256];
   char modificationTime[256];
   char accessTime[256];
-  sprintf(changeTime, "%02d/%02d/%02d %02d:%02d:%02d", ctimeStruct->tm_mon, ctimeStruct->tm_mday, ctimeStruct->tm_year%100, ctimeStruct->tm_hour, ctimeStruct->tm_min, ctimeStruct->tm_sec);
-  sprintf(modificationTime, "%02d/%02d/%02d %02d:%02d:%02d", mtimeStruct->tm_mon, mtimeStruct->tm_mday, mtimeStruct->tm_year%100, mtimeStruct->tm_hour, mtimeStruct->tm_min, mtimeStruct->tm_sec);
-  sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", atimeStruct->tm_mon, atimeStruct->tm_mday, atimeStruct->tm_year%100, atimeStruct->tm_hour, atimeStruct->tm_min, atimeStruct->tm_sec);
+  sprintf(changeTime, "%02d/%02d/%02d %02d:%02d:%02d", ctimeStruct->tm_mon+1, ctimeStruct->tm_mday, ctimeStruct->tm_year%100, ctimeStruct->tm_hour, ctimeStruct->tm_min, ctimeStruct->tm_sec);
+  sprintf(modificationTime, "%02d/%02d/%02d %02d:%02d:%02d", mtimeStruct->tm_mon+1, mtimeStruct->tm_mday, mtimeStruct->tm_year%100, mtimeStruct->tm_hour, mtimeStruct->tm_min, mtimeStruct->tm_sec);
+  sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", atimeStruct->tm_mon+1, atimeStruct->tm_mday, atimeStruct->tm_year%100, atimeStruct->tm_hour, atimeStruct->tm_min, atimeStruct->tm_sec);
   uint64_t fileSize=((uint64_t)(inode.i_dir_acl)<<32)|inode.i_size;
   uint32_t numBlocks=inode.i_blocks;
   uint32_t *blockAddress=inode.i_block;
@@ -106,7 +106,8 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
 	  blockAddress[12],
 	  blockAddress[13],
 	  blockAddress[14]);
-  checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing inode summary");
+  if(mode!=0 && linkCount!=0)
+    checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing inode summary");
 }
 
 //ith block/inode is at byte (i-1)/8, bit (i-1)%8 where bits are indexed with 0 as lowest order bit
