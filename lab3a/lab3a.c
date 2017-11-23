@@ -5,6 +5,7 @@
 #include <fcntl.h>
 #include <unistd.h>
 #include <stdint.h>
+#include <time.h>
 #include "ext2_fs.h"
 
 int fileSystemFD = -1;
@@ -43,15 +44,78 @@ void freeMemory()
     free(buf);
 }
 
+void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber)
+{
+  struct ext2_inode inode;
+  checkForError(pread(fileSystemFD, &inode, inodeSize, inodeTable*blockSize+inodeIndex*inodeSize), "reading inode");
+
+  uint32_t inodeNumber=groupNumber*inodesPerGroup+inodeIndex;
+  uint16_t fileTypeVal=(inode.i_mode>>12)&0xF;
+  char fileType='?';
+  if(fileTypeVal==0x4)
+    fileType='d';
+  else if(fileTypeVal==0x8)
+    fileType='f';
+  else if(fileTypeVal==0xA)
+    fileType='s';
+  uint16_t mode=inode.i_mode&0xFFF;
+  uint16_t owner=inode.i_uid;
+  uint16_t group=inode.i_gid;
+  uint16_t linkCount=inode.i_links_count;
+  time_t ctime=(time_t)inode.i_ctime;
+  time_t mtime=(time_t)inode.i_mtime;
+  time_t atime=(time_t)inode.i_atime;
+  struct tm *ctimeStruct=gmtime(&ctime);
+  struct tm *mtimeStruct=gmtime(&mtime);
+  struct tm *atimeStruct=gmtime(&atime);
+  char changeTime[256];
+  char modificationTime[256];
+  char accessTime[256];
+  sprintf(changeTime, "%02d/%02d/%02d %02d:%02d:%02d", ctimeStruct->tm_mon, ctimeStruct->tm_mday, ctimeStruct->tm_year%100, ctimeStruct->tm_hour, ctimeStruct->tm_min, ctimeStruct->tm_sec);
+  sprintf(modificationTime, "%02d/%02d/%02d %02d:%02d:%02d", mtimeStruct->tm_mon, mtimeStruct->tm_mday, mtimeStruct->tm_year%100, mtimeStruct->tm_hour, mtimeStruct->tm_min, mtimeStruct->tm_sec);
+  sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", atimeStruct->tm_mon, atimeStruct->tm_mday, atimeStruct->tm_year%100, atimeStruct->tm_hour, atimeStruct->tm_min, atimeStruct->tm_sec);
+  uint64_t fileSize=((uint64_t)(inode.i_dir_acl)<<32)|inode.i_size;
+  uint32_t numBlocks=inode.i_blocks;
+  uint32_t *blockAddress=inode.i_block;
+
+  memset(buf, 0, buf_size);
+  sprintf(buf, "INODE,%u,%c,%03o,%u,%u,%u,%s,%s,%s,%lu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
+	  inodeNumber,
+	  fileType,
+	  mode,
+	  owner,
+	  group,
+	  linkCount,
+	  changeTime,
+	  modificationTime,
+	  accessTime,
+	  fileSize,
+	  numBlocks,
+	  blockAddress[0],
+	  blockAddress[1],
+	  blockAddress[2],
+	  blockAddress[3],
+	  blockAddress[4],
+	  blockAddress[5],
+	  blockAddress[6],
+	  blockAddress[7],
+	  blockAddress[8],
+	  blockAddress[9],
+	  blockAddress[10],
+	  blockAddress[11],
+	  blockAddress[12],
+	  blockAddress[13],
+	  blockAddress[14]);
+  checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing inode summary");
+}
+
 //ith block/inode is at byte (i-1)/8, bit (i-1)%8 where bits are indexed with 0 as lowest order bit
 //and 7 as highest order bit in both bitmaps
 
-void scanFreeBlockEntries(uint32_t blockBitmap, uint32_t totalBlocksInGroup)
+void scanBlockBitmap(uint32_t blockBitmap, uint32_t totalBlocksInGroup)
 {
   uint8_t *bitmap = malloc(blockSize);
-
-  ssize_t numRead = pread(fileSystemFD, bitmap, blockSize, blockBitmap*blockSize);
-  checkForError(numRead, "reading block bitmap");
+  checkForError(pread(fileSystemFD, bitmap, blockSize, blockBitmap*blockSize), "reading block bitmap");
 
   uint32_t i;
   for (i = 0; i<totalBlocksInGroup; i++)
@@ -67,12 +131,10 @@ void scanFreeBlockEntries(uint32_t blockBitmap, uint32_t totalBlocksInGroup)
   free(bitmap);
 }
 
-void scanFreeInodeEntries(uint32_t inodeBitmap, uint32_t totalInodesInGroup)
+void scanInodeBitmap(uint32_t inodeBitmap, uint32_t totalInodesInGroup, uint32_t inodeTable, uint32_t groupNumber)
 {
   uint8_t *bitmap = malloc(blockSize);
-
-  ssize_t numRead = pread(fileSystemFD, bitmap, blockSize, inodeBitmap*blockSize);
-  checkForError(numRead, "reading inode bitmap");
+  checkForError(pread(fileSystemFD, bitmap, blockSize, inodeBitmap*blockSize), "reading inode bitmap");
 
   uint32_t i;
   for (i = 0; i<totalInodesInGroup; i++)
@@ -84,13 +146,14 @@ void scanFreeInodeEntries(uint32_t inodeBitmap, uint32_t totalInodesInGroup)
       sprintf(buf, "IFREE,%u\n",i+1);
       checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing free inode");
     }
+    else
+      inodeSummary(inodeTable,i,groupNumber);
   }
   free(bitmap);
 }
 
 void superblockSummary() {
-  ssize_t numRead = pread(fileSystemFD, &superblock, sizeof(struct ext2_super_block), 1024);
-  checkForError(numRead, "reading superblock");
+  checkForError(pread(fileSystemFD, &superblock, sizeof(struct ext2_super_block), 1024), "reading superblock");
 
   totalNumBlocks=superblock.s_blocks_count;
   totalNumInodes=superblock.s_inodes_count;
@@ -117,8 +180,7 @@ void groupSummary()
 {
   uint32_t numGroups = 1+(totalNumBlocks-1)/blocksPerGroup;
   struct ext2_group_desc *groupDescriptorTable = malloc(numGroups*sizeof(struct ext2_group_desc));
-  ssize_t numRead = pread(fileSystemFD, groupDescriptorTable, numGroups*sizeof(struct ext2_group_desc), 1024+sizeof(struct ext2_super_block));
-  checkForError(numRead, "reading group descriptor table");
+  checkForError(pread(fileSystemFD, groupDescriptorTable, numGroups*sizeof(struct ext2_group_desc), 1024+sizeof(struct ext2_super_block)), "reading group descriptor table");
 
   ssize_t i;
   for (i = 0; i < numGroups; i++)
@@ -156,8 +218,8 @@ void groupSummary()
 
     checkForError(write(STDOUT_FILENO, buf, strlen(buf)), "printing group descriptor data");
 
-    scanFreeBlockEntries(blockBitmapNumber, totalBlocksInGroup);
-    scanFreeInodeEntries(inodeBitmapNumber, totalInodesInGroup);
+    scanBlockBitmap(blockBitmapNumber, totalBlocksInGroup);
+    scanInodeBitmap(inodeBitmapNumber, totalInodesInGroup, inodeTableNumber, groupNumber);
   }
 }
 
