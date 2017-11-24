@@ -11,3 +11,5 @@ directory entries, and indirect block entries.
 
 Makefile: Compile, package, and clean this project with make default,
 make dist, and make clean.
+
+ext2_fs.h: Header file for ext2 file system.

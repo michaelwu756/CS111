@@ -8,7 +8,7 @@ lab3a: lab3a.c
 .PHONY: default clean dist
 
 clean:
-	rm -f lab3a
+	rm -f lab3a *.tar.gz
 
-dist: lab3a.c Makefile README
+dist: lab3a.c Makefile README ext2_fs.h
 	tar -czf lab3a-404751542.tar.gz $^
