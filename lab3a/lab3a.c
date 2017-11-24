@@ -67,12 +67,12 @@ void directoryBlockSummary(uint32_t parentInode, uint32_t blockNum, uint32_t log
 
     memset(buf, 0, buf_size);
     sprintf(buf, "DIRENT,%u,%u,%u,%u,%u,'%s'\n",
-	    parentInode,
-	    logicalByteOffset,
-	    inodeNumber,
-	    entryLength,
-	    nameLength,
-	    name);
+            parentInode,
+            logicalByteOffset,
+            inodeNumber,
+            entryLength,
+            nameLength,
+            name);
     if(inodeNumber!=0)
       checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing directory entry");
     free(name);
@@ -122,11 +122,11 @@ int indirectBlockSummary(int indirectionLevel, uint32_t parentInode, uint32_t bl
     {
       memset(buf, 0, buf_size);
       sprintf(buf, "INDIRECT,%u,%u,%u,%u,%u\n",
-	      parentInode,
-	      indirectionLevel,
-	      logicalBlockNum+traversedBlocks,
-	      blockNum,
-	      referencedBlockNum);
+              parentInode,
+              indirectionLevel,
+              logicalBlockNum+traversedBlocks,
+              blockNum,
+              referencedBlockNum);
       checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing indirect block entry");
       indirectBlockSummary(indirectionLevel-1, parentInode, referencedBlockNum, logicalBlockNum+traversedBlocks);
     }
@@ -171,32 +171,32 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
 
   memset(buf, 0, buf_size);
   sprintf(buf, "INODE,%u,%c,%03o,%u,%u,%u,%s,%s,%s,%lu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
-	  inodeNumber,
-	  fileType,
-	  mode,
-	  owner,
-	  group,
-	  linkCount,
-	  changeTime,
-	  modificationTime,
-	  accessTime,
-	  fileSize,
-	  numBlocks,
-	  blockNum[0],
-	  blockNum[1],
-	  blockNum[2],
-	  blockNum[3],
-	  blockNum[4],
-	  blockNum[5],
-	  blockNum[6],
-	  blockNum[7],
-	  blockNum[8],
-	  blockNum[9],
-	  blockNum[10],
-	  blockNum[11],
-	  blockNum[12],
-	  blockNum[13],
-	  blockNum[14]);
+          inodeNumber,
+          fileType,
+          mode,
+          owner,
+          group,
+          linkCount,
+          changeTime,
+          modificationTime,
+          accessTime,
+          fileSize,
+          numBlocks,
+          blockNum[0],
+          blockNum[1],
+          blockNum[2],
+          blockNum[3],
+          blockNum[4],
+          blockNum[5],
+          blockNum[6],
+          blockNum[7],
+          blockNum[8],
+          blockNum[9],
+          blockNum[10],
+          blockNum[11],
+          blockNum[12],
+          blockNum[13],
+          blockNum[14]);
   if(mode!=0 && linkCount!=0)
   {
     checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing inode summary");
@@ -204,20 +204,20 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
     {
       int logicalBlock;
       for(logicalBlock=0;logicalBlock<12; logicalBlock++)
-	if(blockNum[logicalBlock]!=0)
-	  directoryBlockSummary(inodeNumber, blockNum[logicalBlock], logicalBlock);
+        if(blockNum[logicalBlock]!=0)
+          directoryBlockSummary(inodeNumber, blockNum[logicalBlock], logicalBlock);
       int i;
       for(i=0;i<3;i++)
-	if(blockNum[12+i]!=0)
-	  logicalBlock+=directoryIndirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
+        if(blockNum[12+i]!=0)
+          logicalBlock+=directoryIndirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
     }
     else
     {
       int logicalBlock=12;
       int i;
       for(i=0;i<3;i++)
-	if(blockNum[12+i]!=0)
-	  logicalBlock+=indirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
+        if(blockNum[12+i]!=0)
+          logicalBlock+=indirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
     }
   }
 }
@@ -279,13 +279,13 @@ void superblockSummary()
 
   memset(buf, 0, buf_size);
   sprintf(buf, "SUPERBLOCK,%u,%u,%u,%u,%u,%u,%u\n",
-	  totalNumBlocks,
-	  totalNumInodes,
-	  blockSize,
-	  inodeSize,
-	  blocksPerGroup,
-	  inodesPerGroup,
-	  firstInode);
+          totalNumBlocks,
+          totalNumInodes,
+          blockSize,
+          inodeSize,
+          blocksPerGroup,
+          inodesPerGroup,
+          firstInode);
 
   checkForError(write(STDOUT_FILENO, buf, strlen(buf)),"printing superblock data");
 }
@@ -321,14 +321,14 @@ void groupSummary()
 
     memset(buf, 0, buf_size);
     sprintf(buf, "GROUP,%u,%u,%u,%u,%u,%u,%u,%u\n",
-	    groupNumber,
-	    totalBlocksInGroup,
-	    totalInodesInGroup,
-	    freeBlockCount,
-	    freeInodesCount,
-	    blockBitmapNumber,
-	    inodeBitmapNumber,
-	    inodeTableNumber);
+            groupNumber,
+            totalBlocksInGroup,
+            totalInodesInGroup,
+            freeBlockCount,
+            freeInodesCount,
+            blockBitmapNumber,
+            inodeBitmapNumber,
+            inodeTableNumber);
 
     checkForError(write(STDOUT_FILENO, buf, strlen(buf)), "printing group descriptor data");
 
