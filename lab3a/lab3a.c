@@ -90,11 +90,11 @@ int directoryIndirectBlockSummary(int indirectionLevel, uint32_t parentInode, ui
   int stride=1;
   int i;
   for(i=0; i<indirectionLevel-1;i++)
-    stride*=blockSize/4;
+    stride*=blockSize/sizeof(uint32_t);
   int traversedBlocks=0;
   uint32_t referencedBlockNum;
   uint32_t offset;
-  for(offset=0; offset<blockSize; offset+=4)
+  for(offset=0; offset<blockSize; offset+=sizeof(uint32_t))
   {
     checkForError(pread(fileSystemFD, &referencedBlockNum, sizeof(uint32_t), blockNum*blockSize+offset), "reading indirect block entry");
     if(referencedBlockNum!=0)
@@ -111,11 +111,11 @@ int indirectBlockSummary(int indirectionLevel, uint32_t parentInode, uint32_t bl
   int stride=1;
   int i;
   for(i=0; i<indirectionLevel-1;i++)
-    stride*=blockSize/4;
+    stride*=blockSize/sizeof(uint32_t);
   int traversedBlocks=0;
   uint32_t referencedBlockNum;
   uint32_t offset;
-  for(offset=0; offset<blockSize; offset+=4)
+  for(offset=0; offset<blockSize; offset+=sizeof(uint32_t))
   {
     checkForError(pread(fileSystemFD, &referencedBlockNum, sizeof(uint32_t), blockNum*blockSize+offset), "reading indirect block entry");
     if(referencedBlockNum!=0)
