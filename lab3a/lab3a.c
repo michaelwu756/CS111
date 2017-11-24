@@ -11,7 +11,7 @@
 int fileSystemFD = -1;
 
 char *buf;
-int buf_size = 256;
+int buf_size = 512;
 
 struct ext2_super_block superblock;
 uint32_t totalNumBlocks;
@@ -42,6 +42,97 @@ void freeMemory()
   close(fileSystemFD);
   if (buf)
     free(buf);
+}
+
+void directoryBlockSummary(uint32_t parentInode, uint32_t blockNum, uint32_t logicalBlockNum)
+{
+  uint32_t byteOffset=0;
+  uint32_t logicalByteOffset;
+  uint32_t inodeNumber;
+  uint16_t entryLength;
+  uint8_t nameLength;
+  char *name;
+
+  while(byteOffset!=blockSize)
+  {
+    struct ext2_dir_entry directoryEntry;
+    checkForError(pread(fileSystemFD, &directoryEntry, sizeof(struct ext2_dir_entry), blockNum*blockSize+byteOffset), "reading directory entry");
+    logicalByteOffset=logicalBlockNum*blockSize+byteOffset;
+    inodeNumber=directoryEntry.inode;
+    entryLength=directoryEntry.rec_len;
+    nameLength=directoryEntry.name_len;
+    name=malloc((nameLength+1)*sizeof(char));
+    strncpy(name, directoryEntry.name, nameLength);
+    name[nameLength]='\0';
+
+    memset(buf, 0, buf_size);
+    sprintf(buf, "DIRENT,%u,%u,%u,%u,%u,'%s'\n",
+	    parentInode,
+	    logicalByteOffset,
+	    inodeNumber,
+	    entryLength,
+	    nameLength,
+	    name);
+    if(inodeNumber!=0)
+      checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing directory entry");
+    free(name);
+    byteOffset+=entryLength;
+  }
+}
+
+int directoryIndirectBlockSummary(int indirectionLevel, uint32_t parentInode, uint32_t blockNum, uint32_t logicalBlockNum)
+{
+  if(indirectionLevel==0)
+  {
+    directoryBlockSummary(parentInode, blockNum, logicalBlockNum);
+    return 1;
+  }
+  int stride=1;
+  int i;
+  for(i=0; i<indirectionLevel-1;i++)
+    stride*=blockSize/4;
+  int traversedBlocks=0;
+  uint32_t referencedBlockNum;
+  uint32_t offset;
+  for(offset=0; offset<blockSize; offset+=4)
+  {
+    checkForError(pread(fileSystemFD, &referencedBlockNum, sizeof(uint32_t), blockNum*blockSize+offset), "reading indirect block entry");
+    if(referencedBlockNum!=0)
+      directoryIndirectBlockSummary(indirectionLevel-1, parentInode, referencedBlockNum, logicalBlockNum+traversedBlocks);
+    traversedBlocks+=stride;
+  }
+  return traversedBlocks;
+}
+
+int indirectBlockSummary(int indirectionLevel, uint32_t parentInode, uint32_t blockNum, uint32_t logicalBlockNum)
+{
+  if(indirectionLevel==0)
+    return 1;
+  int stride=1;
+  int i;
+  for(i=0; i<indirectionLevel-1;i++)
+    stride*=blockSize/4;
+  int traversedBlocks=0;
+  uint32_t referencedBlockNum;
+  uint32_t offset;
+  for(offset=0; offset<blockSize; offset+=4)
+  {
+    checkForError(pread(fileSystemFD, &referencedBlockNum, sizeof(uint32_t), blockNum*blockSize+offset), "reading indirect block entry");
+    if(referencedBlockNum!=0)
+    {
+      memset(buf, 0, buf_size);
+      sprintf(buf, "INDIRECT,%u,%u,%u,%u,%u\n",
+	      parentInode,
+	      indirectionLevel,
+	      logicalBlockNum+traversedBlocks,
+	      blockNum,
+	      referencedBlockNum);
+      checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing indirect block entry");
+      indirectBlockSummary(indirectionLevel-1, parentInode, referencedBlockNum, logicalBlockNum+traversedBlocks);
+    }
+    traversedBlocks+=stride;
+  }
+  return traversedBlocks;
 }
 
 void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber)
@@ -76,7 +167,7 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
   sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", atimeStruct->tm_mon+1, atimeStruct->tm_mday, atimeStruct->tm_year%100, atimeStruct->tm_hour, atimeStruct->tm_min, atimeStruct->tm_sec);
   uint64_t fileSize=((uint64_t)(inode.i_dir_acl)<<32)|inode.i_size;
   uint32_t numBlocks=inode.i_blocks;
-  uint32_t *blockAddress=inode.i_block;
+  uint32_t *blockNum=inode.i_block;
 
   memset(buf, 0, buf_size);
   sprintf(buf, "INODE,%u,%c,%03o,%u,%u,%u,%s,%s,%s,%lu,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u,%u\n",
@@ -91,23 +182,44 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
 	  accessTime,
 	  fileSize,
 	  numBlocks,
-	  blockAddress[0],
-	  blockAddress[1],
-	  blockAddress[2],
-	  blockAddress[3],
-	  blockAddress[4],
-	  blockAddress[5],
-	  blockAddress[6],
-	  blockAddress[7],
-	  blockAddress[8],
-	  blockAddress[9],
-	  blockAddress[10],
-	  blockAddress[11],
-	  blockAddress[12],
-	  blockAddress[13],
-	  blockAddress[14]);
+	  blockNum[0],
+	  blockNum[1],
+	  blockNum[2],
+	  blockNum[3],
+	  blockNum[4],
+	  blockNum[5],
+	  blockNum[6],
+	  blockNum[7],
+	  blockNum[8],
+	  blockNum[9],
+	  blockNum[10],
+	  blockNum[11],
+	  blockNum[12],
+	  blockNum[13],
+	  blockNum[14]);
   if(mode!=0 && linkCount!=0)
+  {
     checkForError(write(STDOUT_FILENO,buf,strlen(buf)), "printing inode summary");
+    if(fileType=='d')
+    {
+      int logicalBlock;
+      for(logicalBlock=0;logicalBlock<12; logicalBlock++)
+	if(blockNum[logicalBlock]!=0)
+	  directoryBlockSummary(inodeNumber, blockNum[logicalBlock], logicalBlock);
+      int i;
+      for(i=0;i<3;i++)
+	if(blockNum[12+i]!=0)
+	  logicalBlock+=directoryIndirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
+    }
+    else
+    {
+      int logicalBlock=12;
+      int i;
+      for(i=0;i<3;i++)
+	if(blockNum[12+i]!=0)
+	  logicalBlock+=indirectBlockSummary(1+i, inodeNumber, blockNum[12+i], logicalBlock);
+    }
+  }
 }
 
 //ith block/inode is at byte (i-1)/8, bit (i-1)%8 where bits are indexed with 0 as lowest order bit
@@ -153,7 +265,8 @@ void scanInodeBitmap(uint32_t inodeBitmap, uint32_t totalInodesInGroup, uint32_t
   free(bitmap);
 }
 
-void superblockSummary() {
+void superblockSummary()
+{
   checkForError(pread(fileSystemFD, &superblock, sizeof(struct ext2_super_block), 1024), "reading superblock");
 
   totalNumBlocks=superblock.s_blocks_count;

@@ -1,0 +1,13 @@
+NAME: Michael Wu
+ID: 404751542
+EMAIL: cheeserules43@gmail.com
+
+This submission includes:
+
+lab3a.c: Source code for a program that prints out ext2 filesystem
+information.  Prints superblock info, then group descriptor table
+info, then for each group free data nodes, free inodes, inode info,
+directory entries, and indirect block entries.
+
+Makefile: Compile, package, and clean this project with make default,
+make dist, and make clean.
