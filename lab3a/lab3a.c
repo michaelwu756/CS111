@@ -153,18 +153,24 @@ void inodeSummary(uint32_t inodeTable, uint32_t inodeIndex, uint32_t groupNumber
   uint16_t owner=inode.i_uid;
   uint16_t group=inode.i_gid;
   uint16_t linkCount=inode.i_links_count;
+
+  struct tm *timeStruct;
+
   time_t ctime=(time_t)inode.i_ctime;
-  time_t mtime=(time_t)inode.i_mtime;
-  time_t atime=(time_t)inode.i_atime;
-  struct tm *ctimeStruct=gmtime(&ctime);
-  struct tm *mtimeStruct=gmtime(&mtime);
-  struct tm *atimeStruct=gmtime(&atime);
+  timeStruct=gmtime(&ctime);
   char changeTime[256];
+  sprintf(changeTime, "%02d/%02d/%02d %02d:%02d:%02d", timeStruct->tm_mon+1, timeStruct->tm_mday, timeStruct->tm_year%100, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+
+  time_t mtime=(time_t)inode.i_mtime;
+  timeStruct=gmtime(&mtime);
   char modificationTime[256];
+  sprintf(modificationTime, "%02d/%02d/%02d %02d:%02d:%02d", timeStruct->tm_mon+1, timeStruct->tm_mday, timeStruct->tm_year%100, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+
+  time_t atime=(time_t)inode.i_atime;
+  timeStruct=gmtime(&atime);
   char accessTime[256];
-  sprintf(changeTime, "%02d/%02d/%02d %02d:%02d:%02d", ctimeStruct->tm_mon+1, ctimeStruct->tm_mday, ctimeStruct->tm_year%100, ctimeStruct->tm_hour, ctimeStruct->tm_min, ctimeStruct->tm_sec);
-  sprintf(modificationTime, "%02d/%02d/%02d %02d:%02d:%02d", mtimeStruct->tm_mon+1, mtimeStruct->tm_mday, mtimeStruct->tm_year%100, mtimeStruct->tm_hour, mtimeStruct->tm_min, mtimeStruct->tm_sec);
-  sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", atimeStruct->tm_mon+1, atimeStruct->tm_mday, atimeStruct->tm_year%100, atimeStruct->tm_hour, atimeStruct->tm_min, atimeStruct->tm_sec);
+  sprintf(accessTime, "%02d/%02d/%02d %02d:%02d:%02d", timeStruct->tm_mon+1, timeStruct->tm_mday, timeStruct->tm_year%100, timeStruct->tm_hour, timeStruct->tm_min, timeStruct->tm_sec);
+
   uint64_t fileSize=((uint64_t)(inode.i_dir_acl)<<32)|inode.i_size;
   uint32_t numBlocks=inode.i_blocks;
   uint32_t *blockNum=inode.i_block;
