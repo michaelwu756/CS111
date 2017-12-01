@@ -1,16 +1,13 @@
-package lab3a.infoobject;
+package lab3b.infoobject;
 
-public class Bfree
-{
+public class Bfree {
     private int blockNum;
 
-    public Bfree(int blockNum)
-    {
-        this.blockNum=blockNum;
+    public Bfree(int blockNum) {
+        this.blockNum = blockNum;
     }
 
-    public int getBlockNum()
-    {
+    public int getBlockNum() {
         return blockNum;
     }
 }
