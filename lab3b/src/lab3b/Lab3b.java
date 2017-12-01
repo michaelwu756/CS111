@@ -6,7 +6,9 @@ import java.io.BufferedReader;
 import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class Lab3b {
@@ -154,6 +156,7 @@ public class Lab3b {
         checkMultipleReferencedBlocks();
         checkUnreferencedInodes();
         checkReferencedInodesOnFreeList();
+        checkLinkCount();
     }
 
     private void checkInvalidOrReservedBlocks() {
@@ -333,6 +336,18 @@ public class Lab3b {
         inodeList.forEach(inode -> {
             if (freeList.contains(inode.getInodeNumber()))
                 System.out.println("ALLOCATED INODE " + inode.getInodeNumber() + " ON FREELIST");
+        });
+    }
+
+    private void checkLinkCount() {
+        Map<Integer, Integer> inodeLinkCountMap = new HashMap<>();
+        inodeList.forEach(inode -> inodeLinkCountMap.put(inode.getInodeNumber(), 0));
+
+        dirEntList.forEach(dirEnt -> inodeLinkCountMap.put(dirEnt.getReferencedInode(), inodeLinkCountMap.get(dirEnt.getReferencedInode()) + 1));
+
+        inodeList.forEach(inode -> {
+            if (inode.getLinkCount() != inodeLinkCountMap.get(inode.getInodeNumber()))
+                System.out.println("INODE " + inode.getInodeNumber() + " HAS " + inodeLinkCountMap.get(inode.getInodeNumber()) + " LINKS BUT LINKCOUNT IS " + inode.getLinkCount());
         });
     }
 }
