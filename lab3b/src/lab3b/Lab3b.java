@@ -138,7 +138,7 @@ public class Lab3b {
 
         Superblock superblock = superblockList.get(0);
         Group group = groupList.get(0);
-        int firstDataBlock = group.getFirstInodeBlockNum() + 1
+        int firstDataBlock = group.getFirstInodeBlockNum()
                 + (int) Math.ceil((double) (superblock.getInodeSize() * group.getTotalInodes()) / superblock.getBlockSize());
 
         for (int i = 1; i < firstDataBlock; i++)
