@@ -152,6 +152,8 @@ public class Lab3b {
         checkUnreferencedBlocks();
         checkReferencedBlocksOnFreeList();
         checkMultipleReferencedBlocks();
+        checkUnreferencedInodes();
+        checkReferencedInodesOnFreeList();
     }
 
     private void checkInvalidOrReservedBlocks() {
@@ -314,4 +316,23 @@ public class Lab3b {
 
     }
 
+    private void checkUnreferencedInodes() {
+        List<Integer> unreferencedInodes = new ArrayList<>();
+        unreferencedInodes.add(2);
+        for (int i = superblockList.get(0).getFirstNonReservedInode(); i <= groupList.get(0).getTotalInodes(); i++)
+            unreferencedInodes.add(i);
+
+        ifreeList.forEach(ifree -> unreferencedInodes.remove(Integer.valueOf(ifree.getInodeNum())));
+        inodeList.forEach(inode -> unreferencedInodes.remove(Integer.valueOf(inode.getInodeNumber())));
+        unreferencedInodes.forEach(inodeNum -> System.out.println("UNALLOCATED INODE " + inodeNum + " NOT ON FREELIST"));
+    }
+
+    private void checkReferencedInodesOnFreeList() {
+        List<Integer> freeList = ifreeList.stream().map(Ifree::getInodeNum).collect(Collectors.toList());
+
+        inodeList.forEach(inode -> {
+            if (freeList.contains(inode.getInodeNumber()))
+                System.out.println("ALLOCATED INODE " + inode.getInodeNumber() + " ON FREELIST");
+        });
+    }
 }
