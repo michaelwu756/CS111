@@ -7,6 +7,7 @@ import java.io.File;
 import java.io.FileReader;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.stream.Collectors;
 
 public class Lab3b {
     private static final int SIZE_OF_INT32 = 4;
@@ -129,8 +130,10 @@ public class Lab3b {
         System.exit(0);
     }
 
-    public void checkFileSystem() {
+    private void checkFileSystem() {
         checkInvalidOrReservedBlocks();
+        checkUnreferencedBlocks();
+        checkReferencedBlocksOnFreeList();
     }
 
     private void checkInvalidOrReservedBlocks() {
@@ -187,5 +190,50 @@ public class Lab3b {
         });
     }
 
+    private void checkUnreferencedBlocks() {
+        List<Integer> unreferencedBlocks = new ArrayList<>();
+
+        Superblock superblock = superblockList.get(0);
+        Group group = groupList.get(0);
+        int firstDataBlock = group.getFirstInodeBlockNum()
+                + (int) Math.ceil((double) (superblock.getInodeSize() * group.getTotalInodes()) / superblock.getBlockSize());
+
+        for (int i = firstDataBlock; i < group.getTotalBlocks(); i++)
+            unreferencedBlocks.add(i);
+
+        bfreeList.forEach(bfree -> unreferencedBlocks.remove(Integer.valueOf(bfree.getBlockNum())));
+
+        inodeList.forEach(inode -> {
+            for (int i = 0; i < 12; i++)
+                unreferencedBlocks.remove(Integer.valueOf(inode.getDirectBlockNum(i)));
+            unreferencedBlocks.remove(Integer.valueOf(inode.getSingleIndirectBlockNum()));
+            unreferencedBlocks.remove(Integer.valueOf(inode.getDoubleIndirectBlockNum()));
+            unreferencedBlocks.remove(Integer.valueOf(inode.getTripleIndirectBlockNum()));
+        });
+
+        indirectList.forEach(indirect -> unreferencedBlocks.remove(Integer.valueOf(indirect.getReferencedBlock())));
+
+        unreferencedBlocks.forEach(blockNum -> System.out.println("UNREFERENCED BLOCK " + blockNum));
+    }
+
+    private void checkReferencedBlocksOnFreeList() {
+        List<Integer> freeList = bfreeList.stream().map(Bfree::getBlockNum).collect(Collectors.toList());
+        inodeList.forEach(inode -> {
+            for (int i = 0; i < 12; i++)
+                if (freeList.contains(inode.getDirectBlockNum(i)))
+                    System.out.println("ALLOCATED BLOCK " + inode.getDirectBlockNum(i) + " ON FREELIST");
+            if (freeList.contains(inode.getSingleIndirectBlockNum()))
+                System.out.println("ALLOCATED BLOCK " + inode.getSingleIndirectBlockNum() + " ON FREELIST");
+            if (freeList.contains(inode.getDoubleIndirectBlockNum()))
+                System.out.println("ALLOCATED BLOCK " + inode.getDoubleIndirectBlockNum() + " ON FREELIST");
+            if (freeList.contains(inode.getTripleIndirectBlockNum()))
+                System.out.println("ALLOCATED BLOCK " + inode.getTripleIndirectBlockNum() + " ON FREELIST");
+        });
+
+        indirectList.forEach(indirect -> {
+            if (freeList.contains(indirect.getReferencedBlock()))
+                System.out.println("ALLOCATED BLOCK " + indirect.getReferencedBlock() + " ON FREELIST");
+        });
+    }
 
 }
