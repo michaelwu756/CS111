@@ -1,7 +1,7 @@
 package lab3b.infoobject;
 
 public class Superblock {
-    private int totalblocks;
+    private int totalBlocks;
     private int totalInodes;
     private int blockSize;
     private int inodeSize;
@@ -9,8 +9,8 @@ public class Superblock {
     private int inodesPerGroup;
     private int firstNonReservedInode;
 
-    public Superblock(int totalblocks, int totalInodes, int blockSize, int inodeSize, int blocksPerGroup, int inodesPerGroup, int firstNonReservedInode) {
-        this.totalblocks = totalblocks;
+    public Superblock(int totalBlocks, int totalInodes, int blockSize, int inodeSize, int blocksPerGroup, int inodesPerGroup, int firstNonReservedInode) {
+        this.totalBlocks = totalBlocks;
         this.totalInodes = totalInodes;
         this.blockSize = blockSize;
         this.inodeSize = inodeSize;
@@ -19,8 +19,8 @@ public class Superblock {
         this.firstNonReservedInode = firstNonReservedInode;
     }
 
-    public int getTotalblocks() {
-        return totalblocks;
+    public int getTotalBlocks() {
+        return totalBlocks;
     }
 
     public int getTotalInodes() {
