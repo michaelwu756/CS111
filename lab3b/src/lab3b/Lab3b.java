@@ -26,6 +26,13 @@ public class Lab3b {
 
 
     public Lab3b(String fileName) {
+        bfreeList = new ArrayList<>();
+        dirEntList = new ArrayList<>();
+        groupList = new ArrayList<>();
+        ifreeList = new ArrayList<>();
+        indirectList = new ArrayList<>();
+        inodeList = new ArrayList<>();
+        superblockList = new ArrayList<>();
         try {
             BufferedReader reader = new BufferedReader(new FileReader(new File(System.getProperty("user.dir"), fileName)));
             String line;
@@ -121,7 +128,7 @@ public class Lab3b {
         Group group = groupList.get(0);
         firstDataBlock = group.getFirstInodeBlockNum()
                 + (int) Math.ceil((double) (superblock.getInodeSize() * group.getTotalInodes()) / superblock.getBlockSize());
-        totalBlocks=group.getTotalBlocks();
+        totalBlocks = group.getTotalBlocks();
         addressesInBlock = superblockList.get(0).getBlockSize() / SIZE_OF_INT32;
     }
 
@@ -159,13 +166,13 @@ public class Lab3b {
                 if (inode.getDirectBlockNum(i) < 0 || inode.getDirectBlockNum(i) >= totalBlocks)
                     System.out.println("INVALID BLOCK " + inode.getDirectBlockNum(i) + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + i);
             }
-            int offset=12;
+            int offset = 12;
             if (reservedList.contains(inode.getSingleIndirectBlockNum()))
-                System.out.println("RESERVED INDIRECT BLOCK " + inode.getSingleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET "+offset);
+                System.out.println("RESERVED INDIRECT BLOCK " + inode.getSingleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
             if (inode.getSingleIndirectBlockNum() < 0 || inode.getSingleIndirectBlockNum() >= totalBlocks)
-                System.out.println("INVALID INDIRECT BLOCK " + inode.getSingleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET "+offset);
+                System.out.println("INVALID INDIRECT BLOCK " + inode.getSingleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
 
-            offset+= addressesInBlock;
+            offset += addressesInBlock;
             if (reservedList.contains(inode.getDoubleIndirectBlockNum()))
                 System.out.println("RESERVED DOUBLE INDIRECT BLOCK " + inode.getDoubleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
             if (inode.getDoubleIndirectBlockNum() < 0 || inode.getDoubleIndirectBlockNum() >= totalBlocks)
@@ -234,33 +241,32 @@ public class Lab3b {
         });
     }
 
-    private void checkMultipleReferencedBlocks()
-    {
+    private void checkMultipleReferencedBlocks() {
         List<Integer> blocksReferenced = new ArrayList<>();
         List<Integer> duplicateBlocks = new ArrayList<>();
 
         inodeList.forEach(inode -> {
             for (int i = 0; i < 12; i++)
-                if (inode.getDirectBlockNum(i)>=firstDataBlock && inode.getDirectBlockNum(i)<totalBlocks) {
-                    if(blocksReferenced.contains(inode.getDirectBlockNum(i)))
+                if (inode.getDirectBlockNum(i) >= firstDataBlock && inode.getDirectBlockNum(i) < totalBlocks) {
+                    if (blocksReferenced.contains(inode.getDirectBlockNum(i)))
                         duplicateBlocks.add(inode.getDirectBlockNum(i));
                     else
                         blocksReferenced.add(inode.getDirectBlockNum(i));
                 }
-            if (inode.getSingleIndirectBlockNum()>=firstDataBlock && inode.getSingleIndirectBlockNum()<totalBlocks) {
-                if(blocksReferenced.contains(inode.getSingleIndirectBlockNum()))
+            if (inode.getSingleIndirectBlockNum() >= firstDataBlock && inode.getSingleIndirectBlockNum() < totalBlocks) {
+                if (blocksReferenced.contains(inode.getSingleIndirectBlockNum()))
                     duplicateBlocks.add(inode.getSingleIndirectBlockNum());
                 else
                     blocksReferenced.add(inode.getSingleIndirectBlockNum());
             }
-            if (inode.getDoubleIndirectBlockNum()>=firstDataBlock && inode.getDoubleIndirectBlockNum()<totalBlocks) {
-                if(blocksReferenced.contains(inode.getDoubleIndirectBlockNum()))
+            if (inode.getDoubleIndirectBlockNum() >= firstDataBlock && inode.getDoubleIndirectBlockNum() < totalBlocks) {
+                if (blocksReferenced.contains(inode.getDoubleIndirectBlockNum()))
                     duplicateBlocks.add(inode.getDoubleIndirectBlockNum());
                 else
                     blocksReferenced.add(inode.getDoubleIndirectBlockNum());
             }
-            if (inode.getTripleIndirectBlockNum()>=firstDataBlock && inode.getTripleIndirectBlockNum()<totalBlocks) {
-                if(blocksReferenced.contains(inode.getTripleIndirectBlockNum()))
+            if (inode.getTripleIndirectBlockNum() >= firstDataBlock && inode.getTripleIndirectBlockNum() < totalBlocks) {
+                if (blocksReferenced.contains(inode.getTripleIndirectBlockNum()))
                     duplicateBlocks.add(inode.getTripleIndirectBlockNum());
                 else
                     blocksReferenced.add(inode.getTripleIndirectBlockNum());
@@ -268,8 +274,8 @@ public class Lab3b {
         });
 
         indirectList.forEach(indirect -> {
-            if (indirect.getReferencedBlock()>=firstDataBlock && indirect.getReferencedBlock()<totalBlocks) {
-                if(blocksReferenced.contains(indirect.getReferencedBlock()))
+            if (indirect.getReferencedBlock() >= firstDataBlock && indirect.getReferencedBlock() < totalBlocks) {
+                if (blocksReferenced.contains(indirect.getReferencedBlock()))
                     duplicateBlocks.add(indirect.getReferencedBlock());
                 else
                     blocksReferenced.add(indirect.getReferencedBlock());
@@ -278,20 +284,20 @@ public class Lab3b {
 
         inodeList.forEach(inode -> {
             for (int i = 0; i < 12; i++)
-                if(duplicateBlocks.contains(inode.getDirectBlockNum(i)))
-                    System.out.println("DUPLICATE BLOCK "+inode.getDirectBlockNum(i)+" IN INODE "+inode.getInodeNumber()+" AT OFFSET "+i);
+                if (duplicateBlocks.contains(inode.getDirectBlockNum(i)))
+                    System.out.println("DUPLICATE BLOCK " + inode.getDirectBlockNum(i) + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + i);
 
-            int offset=12;
-            if(duplicateBlocks.contains(inode.getSingleIndirectBlockNum()))
-                System.out.println("DUPLICATE INDIRECT BLOCK "+inode.getSingleIndirectBlockNum()+" IN INODE "+inode.getInodeNumber()+" AT OFFSET "+offset);
+            int offset = 12;
+            if (duplicateBlocks.contains(inode.getSingleIndirectBlockNum()))
+                System.out.println("DUPLICATE INDIRECT BLOCK " + inode.getSingleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
 
-            offset+=addressesInBlock;
-            if(duplicateBlocks.contains(inode.getDoubleIndirectBlockNum())))
-                System.out.println("DUPLICATE DOUBLE INDIRECT BLOCK "+inode.getDoubleIndirectBlockNum()+" IN INODE "+inode.getInodeNumber()+" AT OFFSET "+offset);
+            offset += addressesInBlock;
+            if (duplicateBlocks.contains(inode.getDoubleIndirectBlockNum()))
+                System.out.println("DUPLICATE DOUBLE INDIRECT BLOCK " + inode.getDoubleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
 
-            offset+=addressesInBlock*addressesInBlock;
-            if(duplicateBlocks.contains(inode.getTripleIndirectBlockNum()))
-                System.out.println("DUPLICATE TRIPLE INDIRECT BLOCK "+inode.getTripleIndirectBlockNum()+" IN INODE "+inode.getInodeNumber()+" AT OFFSET "+offset);
+            offset += addressesInBlock * addressesInBlock;
+            if (duplicateBlocks.contains(inode.getTripleIndirectBlockNum()))
+                System.out.println("DUPLICATE TRIPLE INDIRECT BLOCK " + inode.getTripleIndirectBlockNum() + " IN INODE " + inode.getInodeNumber() + " AT OFFSET " + offset);
         });
 
         indirectList.forEach(indirect -> {
@@ -303,7 +309,7 @@ public class Lab3b {
             if (indirect.getIndirectionLevel() == 3)
                 referencedIndirectionLevel = "DOUBLE INDIRECT";
             if (duplicateBlocks.contains(indirect.getReferencedBlock()))
-                System.out.println("DUPLICATE "+referencedIndirectionLevel+" BLOCK "+indirect.getReferencedBlock()+" IN INODE "+indirect.getParentInode()+" AT OFFSET "+indirect.getLogicalBlockOffset());
+                System.out.println("DUPLICATE " + referencedIndirectionLevel + " BLOCK " + indirect.getReferencedBlock() + " IN INODE " + indirect.getParentInode() + " AT OFFSET " + indirect.getLogicalBlockOffset());
         });
 
     }
