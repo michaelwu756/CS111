@@ -346,7 +346,10 @@ public class Lab3b {
         Map<Integer, Integer> inodeLinkCountMap = new HashMap<>();
         inodeList.forEach(inode -> inodeLinkCountMap.put(inode.getInodeNumber(), 0));
 
-        dirEntList.forEach(dirEnt -> inodeLinkCountMap.put(dirEnt.getReferencedInode(), inodeLinkCountMap.get(dirEnt.getReferencedInode()) + 1));
+        dirEntList.forEach(dirEnt -> {
+            if(inodeLinkCountMap.get(dirEnt.getReferencedInode())!=null)
+                inodeLinkCountMap.put(dirEnt.getReferencedInode(), inodeLinkCountMap.get(dirEnt.getReferencedInode()) + 1);
+        });
 
         inodeList.forEach(inode -> {
             if (inode.getLinkCount() != inodeLinkCountMap.get(inode.getInodeNumber()))
@@ -375,12 +378,12 @@ public class Lab3b {
             if (referencedInode == null)
                 return;
             if (referencedInode.getFileType().equals("d"))
-                inodeParentMap.put(referencedInode.getInodeNumber(), dirEnt.getParentInodeNumber());
+                inodeParentMap.put(dirEnt.getReferencedInode(), dirEnt.getParentInodeNumber());
         });
 
         parentDirEnts.forEach(dirEnt -> {
             if (inodeParentMap.get(dirEnt.getParentInodeNumber()) != dirEnt.getReferencedInode())
-                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " LINK TO INODE " + dirEnt.getReferencedInode() + " SHOULD BE " + dirEnt.getParentInodeNumber());
+                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " LINK TO INODE " + dirEnt.getReferencedInode() + " SHOULD BE " + inodeParentMap.get(dirEnt.getParentInodeNumber()));
         });
 
     }
