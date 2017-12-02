@@ -2,7 +2,8 @@ default: lab3b
 
 lab3b: src/lab3b/Lab3b.java src/lab3b/infoobject/*.java
 	javac -d src/ $^
-	echo -e '#!/bin/bash\njava -cp src/ lab3b.Lab3b $$@' > lab3b
+	echo '#!/bin/bash' > lab3b
+	echo 'java -cp src/ lab3b.Lab3b $$@' >> lab3b
 	chmod +x lab3b
 
 .PHONY: default clean dist

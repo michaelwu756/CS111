@@ -1,0 +1,35 @@
+NAME: Michael Wu
+ID: 404751542
+EMAIL: cheeserules43@gmail.com
+
+This submission includes:
+
+src/lab3b/Lab3b.java: Source file that parses one input file in a .csv
+format, and checks that it is a consistent filesystem.
+
+src/lab3b/infoobject/Bfree.java: Container with getters for BFREE
+entries in the .csv file.
+
+src/lab3b/infoobject/DirEnt.java: Container with getters for DIRENT
+entries in the .csv file.
+
+src/lab3b/infoobject/Group.java: Container with getters for GROUP
+entries in the .csv file.
+
+src/lab3b/infoobject/Ifree.java: Container with getters for IFREE
+entries in the .csv file.
+
+src/lab3b/infoobject/Indirect.java: Container with getters for
+INDIRECT entries in the .csv file.
+
+src/lab3b/infoobject/Inode.java: Container with getters for INODE
+entries in the .csv file.
+
+src/lab3b/infoobject/Superblock.java: Containers with getters for
+SUPERBLOCK entries in the .csv file.
+
+Makefile: Makefile that contains targets default, lab3b, clean, and
+dist targets. make default builds lab3b. make lab3b compiles all the
+.java files and creates a shell script lab3b to run the java
+program. make clean restores submission directory to initial
+state. make dist creates a tarball for this submission.
