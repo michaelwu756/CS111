@@ -157,6 +157,9 @@ public class Lab3b {
         checkUnreferencedInodes();
         checkReferencedInodesOnFreeList();
         checkLinkCount();
+        checkUnallocatedOrInvalidInodes();
+        checkParentDirectoryEntries();
+        checkSelfDirectoryEntries();
     }
 
     private void checkInvalidOrReservedBlocks() {
@@ -348,6 +351,46 @@ public class Lab3b {
         inodeList.forEach(inode -> {
             if (inode.getLinkCount() != inodeLinkCountMap.get(inode.getInodeNumber()))
                 System.out.println("INODE " + inode.getInodeNumber() + " HAS " + inodeLinkCountMap.get(inode.getInodeNumber()) + " LINKS BUT LINKCOUNT IS " + inode.getLinkCount());
+        });
+    }
+
+    private void checkUnallocatedOrInvalidInodes() {
+        List<Integer> allocatedInodes = inodeList.stream().map(Inode::getInodeNumber).collect(Collectors.toList());
+        dirEntList.forEach(dirEnt -> {
+            if (dirEnt.getReferencedInode() < 1 || dirEnt.getReferencedInode() > groupList.get(0).getTotalInodes())
+                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " INVALID INODE " + dirEnt.getReferencedInode());
+            else if (!allocatedInodes.contains(dirEnt.getReferencedInode()))
+                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " UNALLOCATED INODE " + dirEnt.getReferencedInode());
+        });
+    }
+
+    private void checkParentDirectoryEntries() {
+        List<DirEnt> parentDirEnts = dirEntList.stream().filter(dirEnt -> dirEnt.getName().equals("'..'")).collect(Collectors.toList());
+
+        Map<Integer, Integer> inodeParentMap = new HashMap<>();
+        inodeParentMap.put(2, 2);
+
+        dirEntList.forEach(dirEnt -> {
+            Inode referencedInode = inodeList.stream().filter(inode -> inode.getInodeNumber() == dirEnt.getReferencedInode()).findFirst().orElse(null);
+            if (referencedInode == null)
+                return;
+            if (referencedInode.getFileType().equals("d"))
+                inodeParentMap.put(referencedInode.getInodeNumber(), dirEnt.getParentInodeNumber());
+        });
+
+        parentDirEnts.forEach(dirEnt -> {
+            if (inodeParentMap.get(dirEnt.getParentInodeNumber()) != dirEnt.getReferencedInode())
+                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " LINK TO INODE " + dirEnt.getReferencedInode() + " SHOULD BE " + dirEnt.getParentInodeNumber());
+        });
+
+    }
+
+    private void checkSelfDirectoryEntries() {
+        List<DirEnt> selfDirEnts = dirEntList.stream().filter(dirEnt -> dirEnt.getName().equals("'.'")).collect(Collectors.toList());
+
+        selfDirEnts.forEach(dirEnt -> {
+            if (dirEnt.getReferencedInode() != dirEnt.getParentInodeNumber())
+                System.out.println("DIRECTORY INODE " + dirEnt.getParentInodeNumber() + " NAME " + dirEnt.getName() + " LINK TO INODE " + dirEnt.getReferencedInode() + " SHOULD BE " + dirEnt.getParentInodeNumber());
         });
     }
 }
