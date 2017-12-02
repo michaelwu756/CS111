@@ -347,7 +347,7 @@ public class Lab3b {
         inodeList.forEach(inode -> inodeLinkCountMap.put(inode.getInodeNumber(), 0));
 
         dirEntList.forEach(dirEnt -> {
-            if(inodeLinkCountMap.get(dirEnt.getReferencedInode())!=null)
+            if (inodeLinkCountMap.get(dirEnt.getReferencedInode()) != null)
                 inodeLinkCountMap.put(dirEnt.getReferencedInode(), inodeLinkCountMap.get(dirEnt.getReferencedInode()) + 1);
         });
 
@@ -373,13 +373,15 @@ public class Lab3b {
         Map<Integer, Integer> inodeParentMap = new HashMap<>();
         inodeParentMap.put(2, 2);
 
-        dirEntList.forEach(dirEnt -> {
-            Inode referencedInode = inodeList.stream().filter(inode -> inode.getInodeNumber() == dirEnt.getReferencedInode()).findFirst().orElse(null);
-            if (referencedInode == null)
-                return;
-            if (referencedInode.getFileType().equals("d"))
-                inodeParentMap.put(dirEnt.getReferencedInode(), dirEnt.getParentInodeNumber());
-        });
+        dirEntList.stream()
+                .filter(dirEnt -> !dirEnt.getName().equals("'.'"))
+                .filter(dirEnt -> !dirEnt.getName().equals("'..'"))
+                .forEach(dirEnt -> {
+                    Inode referencedInode = inodeList.stream().filter(inode -> inode.getInodeNumber() == dirEnt.getReferencedInode()).findFirst().orElse(null);
+
+                    if (referencedInode != null && referencedInode.getFileType().equals("d"))
+                        inodeParentMap.put(dirEnt.getReferencedInode(), dirEnt.getParentInodeNumber());
+                });
 
         parentDirEnts.forEach(dirEnt -> {
             if (inodeParentMap.get(dirEnt.getParentInodeNumber()) != dirEnt.getReferencedInode())
