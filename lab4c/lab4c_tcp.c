@@ -54,8 +54,7 @@ void shutdown()
   char writeBuf[50];
   sprintf(writeBuf, "%02d:%02d:%02d SHUTDOWN\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
   checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
-  if(logfd!=-1)
-    checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+  checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   running=0;
 }
 
@@ -79,11 +78,9 @@ void parse(char *parseBuf, int *parseLength)
   }
   parseBuf[i]='\0';
   *parseLength-=end+1;
-  if(logfd!=-1)
-  {
-    checkForError(write(logfd, command, strlen(command)), "writing to log");
-    checkForError(write(logfd, "\n", 1), "writing to log");
-  }
+  checkForError(write(logfd, command, strlen(command)), "writing to log");
+  checkForError(write(logfd, "\n", 1), "writing to log");
+
   if(strcmp(command, "OFF")==0)
     shutdown();
   else if(strcmp(command, "STOP")==0)
@@ -133,8 +130,7 @@ void generateReport(mraa_aio_context aioFd)
   if(stopped==0)
   {
     checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
-    if(logfd!=-1)
-      checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
+    checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   }
 }
 
@@ -187,11 +183,11 @@ int main(int argc, char *argv[])
   for(i=0; i<9; i++)
     if(!isdigit(id[i]))
       printUsage(argv[0]);
-  
+
   for(i=0; i<(signed int)strlen(argv[optind]); i++)
     if(!isdigit(argv[optind][i]))
       printUsage(argv[0]);
-  
+
   port=atoi(argv[optind]);
   if(port<=0)
     printUsage(argv[0]);
@@ -269,8 +265,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  if(logfd!=-1)
-    checkForError(close(logfd), "closing logfile");
+  checkForError(close(logfd), "closing logfile");
   free(parseBuf);
   mraa_aio_close(adc_a0);
   mraa_gpio_close(gpio_g115);
