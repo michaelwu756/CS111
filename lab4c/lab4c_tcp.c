@@ -12,6 +12,7 @@
 #include<string.h>
 #include<poll.h>
 #include<math.h>
+#include<ctype.h>
 const int B = 4275;
 const int R0 = 100000;
 
@@ -179,7 +180,7 @@ int main(int argc, char *argv[])
         break;
     }
   }
-  if(period<=0 || (scale!='F' && scale!='C') || logfd==-1 || id==NULL || host=NULL || strlen(id)!=9 || argv[optind]==NULL)
+  if(period<=0 || (scale!='F' && scale!='C') || logfd==-1 || id==NULL || host==NULL || strlen(id)!=9 || argv[optind]==NULL)
     printUsage(argv[0]);
 
   int i;
@@ -187,7 +188,7 @@ int main(int argc, char *argv[])
     if(!isdigit(id[i]))
       printUsage(argv[0]);
   
-  for(i=0; i<strlen(argv[optind]); i++)
+  for(i=0; i<(signed int)strlen(argv[optind]); i++)
     if(!isdigit(argv[optind][i]))
       printUsage(argv[0]);
   
@@ -195,7 +196,7 @@ int main(int argc, char *argv[])
   if(port<=0)
     printUsage(argv[0]);
 
-  printf("Logfd %d host %s port %d id %s", logfd, host, port, id);
+  printf("Logfd %d host %s port %d id %s\n", logfd, host, port, id);
 
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
