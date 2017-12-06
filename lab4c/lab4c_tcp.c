@@ -244,7 +244,8 @@ int main(int argc, char *argv[])
 
   char idBuf[13];
   sprintf(idBuf, "ID=%s\n", id);
-  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to log");
+  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to socket");
+  checkForError(write(logfd, idBuf, strlen(idBuf)), "writing ID to log");
   generateReport(adc_a0);
 
 
