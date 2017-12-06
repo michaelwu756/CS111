@@ -1,5 +1,4 @@
 #include<mraa/aio.h>
-#include<mraa/gpio.h>
 #include<mraa/types.h>
 #include<signal.h>
 #include<stdio.h>
@@ -13,6 +12,11 @@
 #include<poll.h>
 #include<math.h>
 #include<ctype.h>
+#include<sys/socket.h>
+#include<netinet/in.h>
+#include<arpa/inet.h>
+#include<sys/types.h>
+#include<netdb.h>
 const int B = 4275;
 const int R0 = 100000;
 
@@ -51,7 +55,7 @@ void setTimerPeriod(int timerfd, int per)
   checkForError(timerfd_settime(timerfd, 0, &time, NULL), "changing timer period");
 }
 
-void shutdown()
+void shutdownProgram()
 {
   time_t rawtime;
   checkForError(time(&rawtime),"getting raw time");
@@ -87,7 +91,7 @@ void parse(char *parseBuf, int *parseLength)
   checkForError(write(logfd, "\n", 1), "writing to log");
 
   if(strcmp(command, "OFF")==0)
-    shutdown();
+    shutdownProgram();
   else if(strcmp(command, "STOP")==0)
     stopped=1;
   else if(strcmp(command, "START")==0)
@@ -157,10 +161,6 @@ int main(int argc, char *argv[])
   host=NULL;
   id=NULL;
   signed char c;
-  struct sockaddr_in sockaddr;
-  sockaddr.sin_port=0;
-  sockaddr.sin_family=AF_INET;
-  checkForError(inet_aton(host, &(sockaddr.sin_addr)), "getting internet address");
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(c){
@@ -200,13 +200,36 @@ int main(int argc, char *argv[])
   if(atoi(argv[optind])<=0)
     printUsage(argv[0]);
 
-  sockaddr.sin_port=htons(atoi(argv[optind]));
-  socketfd=socket(AF_INET,SOCK_STREAM,0);
-  checkForError(socketfd,"opening socket");
-  checkForError(connect(socketfd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)), "connecting to socket");
-  atexit(closeSocket);
+  struct addrinfo *result;
+  int s;
+  s=getaddrinfo(host, argv[optind], NULL, &result);
+  if(s!=0)
+  {
+    fprintf(stderr, "Error resolving host: %s\n", gai_strerror(s));
+    exit(2);
+  }
 
-  printf("Logfd %d host %s port %d id %s\n", logfd, host, port, id);
+  struct addrinfo *rp;
+  for (rp = result; rp != NULL; rp = rp->ai_next) {
+    socketfd = socket(rp->ai_family, rp->ai_socktype,
+                 rp->ai_protocol);
+    if (socketfd == -1)
+      continue;
+
+    if (connect(socketfd, rp->ai_addr, rp->ai_addrlen) != -1)
+      break;
+
+    close(socketfd);
+  }
+
+  if(rp==NULL)
+  {
+
+    fprintf(stderr, "Error: could not connect\n");
+    exit(2);
+  }
+  freeaddrinfo(result);
+  atexit(closeSocket);
 
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
