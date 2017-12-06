@@ -2,8 +2,8 @@ CFLAGS=-lmraa -lm -Wall -Wextra
 
 default: lab4c_tcp lab4c_tls
 
-lab4c_tcp: lab4b_tcp.c
-lab4c_tls: lab4b_tls.c
+lab4c_tcp: lab4c_tcp.c
+lab4c_tls: lab4c_tls.c
 
 lab4c_tcp lab4c_tls:
 	gcc $(CFLAGS) $^ -o $@
