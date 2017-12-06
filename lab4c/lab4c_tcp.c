@@ -24,7 +24,12 @@ int stopped=0;
 int running=1;
 char *id;
 char *host;
-int port;
+int socketfd;
+void closeSocket()
+{
+  if(close(socketfd)==-1)
+    fprintf(stderr, "\r\nError closing socket: %s\r\n", strerror(errno));
+}
 void checkForError(int result, char *message)
 {
   if(result==-1)
@@ -53,7 +58,7 @@ void shutdown()
   struct tm *locTime=localtime(&rawtime);
   char writeBuf[50];
   sprintf(writeBuf, "%02d:%02d:%02d SHUTDOWN\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
-  checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+  checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");
   checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   running=0;
 }
@@ -129,7 +134,7 @@ void generateReport(mraa_aio_context aioFd)
   sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(aioFd));
   if(stopped==0)
   {
-    checkForError(write(STDOUT_FILENO, writeBuf, strlen(writeBuf)),"writing to stdout");
+    checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");
     checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   }
 }
@@ -152,6 +157,10 @@ int main(int argc, char *argv[])
   host=NULL;
   id=NULL;
   signed char c;
+  struct sockaddr_in sockaddr;
+  sockaddr.sin_port=0;
+  sockaddr.sin_family=AF_INET;
+  checkForError(inet_aton(host, &(sockaddr.sin_addr)), "getting internet address");
   while((c=getopt_long(argc, argv, "", long_options, 0)) != -1)
   {
     switch(c){
@@ -188,9 +197,14 @@ int main(int argc, char *argv[])
     if(!isdigit(argv[optind][i]))
       printUsage(argv[0]);
 
-  port=atoi(argv[optind]);
-  if(port<=0)
+  if(atoi(argv[optind])<=0)
     printUsage(argv[0]);
+
+  sockaddr.sin_port=htons(atoi(argv[optind]));
+  socketfd=socket(AF_INET,SOCK_STREAM,0);
+  checkForError(socketfd,"opening socket");
+  checkForError(connect(socketfd, (struct sockaddr *)&sockaddr, sizeof(sockaddr)), "connecting to socket");
+  atexit(closeSocket);
 
   printf("Logfd %d host %s port %d id %s\n", logfd, host, port, id);
 
@@ -204,18 +218,14 @@ int main(int argc, char *argv[])
     fprintf(stderr, "Cannot init AIN0, try running as root or verify grove connection\n");
     exit(1);
   }
+
+  char idBuf[13];
+  sprintf(idBuf, "ID=%s\n", id);
+  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to log");
   generateReport(adc_a0);
 
-  mraa_gpio_context gpio_g115 = mraa_gpio_init(73);
-  if(gpio_g115==NULL)
-  {
-    fprintf(stderr, "Cannot init GPIO_115, try running as root or verify grove connection\n");
-    exit(1);
-  }
-  mraa_gpio_dir(gpio_g115, MRAA_GPIO_IN);
 
-
-  struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{STDIN_FILENO,POLLIN,0}};
+  struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{socketfd,POLLIN,0}};
   char *parseBuf=malloc(sizeof(char));
   if(parseBuf==NULL)
   {
@@ -227,8 +237,6 @@ int main(int argc, char *argv[])
   int allocSize=1;
   while(running==1)
   {
-    if(mraa_gpio_read(gpio_g115)==1)
-      shutdown();
     int pollResult = poll(pollingArr, 2, 0);
     checkForError(pollResult, "polling");
     if(pollResult>0)
@@ -242,8 +250,8 @@ int main(int argc, char *argv[])
       if(pollingArr[1].revents & POLLIN)
       {
         char readBuf[256];
-        int numRead=read(STDIN_FILENO, readBuf, 255);
-        checkForError(numRead, "reading from keyboard");
+        int numRead=read(socketfd, readBuf, 255);
+        checkForError(numRead, "reading from socket");
         parseLength+=numRead;
         while(parseLength>=allocSize)
         {
@@ -268,6 +276,5 @@ int main(int argc, char *argv[])
   checkForError(close(logfd), "closing logfile");
   free(parseBuf);
   mraa_aio_close(adc_a0);
-  mraa_gpio_close(gpio_g115);
   return 0;
 }
