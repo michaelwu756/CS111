@@ -11,7 +11,7 @@ lab4c_tcp lab4c_tls:
 .PHONY: default clean dist
 
 clean:
-	rm -f lab4c *.tar.gz
+	rm -f lab4c_tcp lab4c_tls *.tar.gz
 
 dist: lab4b_tcp.c lab4b_tls.c Makefile README
 	tar -czf lab4c-404751542.tar.gz $^
