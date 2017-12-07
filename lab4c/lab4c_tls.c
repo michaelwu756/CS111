@@ -20,6 +20,7 @@
 #include<openssl/ssl.h>
 #include<openssl/evp.h>
 #include<openssl/err.h>
+#include<openssl/x509_vfy.h>
 const int B = 4275;
 const int R0 = 100000;
 
@@ -254,6 +255,7 @@ int main(int argc, char *argv[])
 
   ctx = NULL;
   ssl = NULL;
+  X509_VERIFY_PARAM *param;
   SSL_library_init();
   SSL_load_error_strings();
   OpenSSL_add_all_algorithms();
@@ -269,6 +271,9 @@ int main(int argc, char *argv[])
 
   ssl=SSL_new(ctx);
   if(ssl==NULL) handleOpenSSLFailure();
+  param = SSL_get0_param(ssl);
+  X509_VERIFY_PARAM_set_hostflags(param, 0);
+  X509_VERIFY_PARAM_set1_host(param, host, 0);
   if(SSL_set_fd(ssl, socketfd)==-1) handleOpenSSLFailure();
   if(SSL_set_tlsext_host_name(ssl, host)!=1) handleOpenSSLFailure();
   if(SSL_connect(ssl)!=1) handleOpenSSLFailure();
@@ -276,7 +281,6 @@ int main(int argc, char *argv[])
   X509* cert = SSL_get_peer_certificate(ssl);
   if(cert==NULL) handleOpenSSLFailure();
   if(SSL_get_verify_result(ssl)!=X509_V_OK) handleOpenSSLFailure();
-  if(X509_check_host(cert, host, strlen(host), 0, NULL)!=1) handleOpenSSLFailure();
   atexit(closeSSL);
 
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
