@@ -17,6 +17,9 @@
 #include<arpa/inet.h>
 #include<sys/types.h>
 #include<netdb.h>
+#include<openssl/ssl.h>
+#include<openssl/evp.h>
+#include<openssl/err.h>
 const int B = 4275;
 const int R0 = 100000;
 
@@ -28,9 +31,23 @@ int stopped=0;
 int running=1;
 char *id;
 char *host;
+SSL_CTX *ctx;
+SSL* ssl;
 int socketfd;
-void closeSocket()
+void closeSSL()
 {
+  if(ctx != NULL)
+    SSL_CTX_free(ctx);
+
+  if(ssl !=NULL)
+  {
+    SSL_shutdown(ssl);
+    SSL_free(ssl);
+  }
+
+  ERR_free_strings();
+  EVP_cleanup();
+
   if(close(socketfd)==-1)
     fprintf(stderr, "\r\nError closing socket: %s\r\n", strerror(errno));
 }
@@ -39,7 +56,7 @@ void checkForError(int result, char *message)
   if(result==-1)
   {
     fprintf(stderr, "Error %s: %s\n", message, strerror(errno));
-    exit(1);
+    exit(2);
   }
 }
 
@@ -62,7 +79,7 @@ void shutdownProgram()
   struct tm *locTime=localtime(&rawtime);
   char writeBuf[50];
   sprintf(writeBuf, "%02d:%02d:%02d SHUTDOWN\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
-  checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");
+  checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");//TODO
   checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   running=0;
 }
@@ -138,9 +155,15 @@ void generateReport(mraa_aio_context aioFd)
   sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(aioFd));
   if(stopped==0)
   {
-    checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");
+    checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");//TODO
     checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   }
+}
+
+void handleOpenSSLFailure()
+{
+  fprintf(stderr, "Error using OpenSSL");
+  exit(2);
 }
 
 int main(int argc, char *argv[])
@@ -210,9 +233,9 @@ int main(int argc, char *argv[])
   }
 
   struct addrinfo *rp;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    socketfd = socket(rp->ai_family, rp->ai_socktype,
-                 rp->ai_protocol);
+  for (rp = result; rp != NULL; rp = rp->ai_next)
+  {
+    socketfd = socket(rp->ai_family, rp->ai_socktype,rp->ai_protocol);
     if (socketfd == -1)
       continue;
 
@@ -224,12 +247,37 @@ int main(int argc, char *argv[])
 
   if(rp==NULL)
   {
-
     fprintf(stderr, "Error: could not connect\n");
     exit(2);
   }
   freeaddrinfo(result);
-  atexit(closeSocket);
+
+  ctx = NULL;
+  ssl = NULL;
+  SSL_library_init();
+  SSL_load_error_strings();
+  OpenSSL_add_all_algorithms();
+
+  const SSL_METHOD* method = SSLv23_method();
+  if(method==NULL) handleOpenSSLFailure();
+  ctx = SSL_CTX_new(method);
+  if(ctx==NULL) handleOpenSSLFailure();
+  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+  SSL_CTX_set_verify_depth(ctx, 4);
+  SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
+  if(SSL_CTX_load_verify_locations(ctx, "lab4c_server.crt", NULL)!=1) handleOpenSSLFailure();
+
+  ssl=SSL_new(ctx);
+  if(ssl==NULL) handleOpenSSLFailure();
+  if(SSL_set_fd(ssl, socketfd)==-1) handleOpenSSLFailure();
+  if(SSL_set_tlsext_host_name(ssl, host)!=1) handleOpenSSLFailure();
+  if(SSL_connect(ssl)!=1) handleOpenSSLFailure();
+
+  X509* cert = SSL_get_peer_certificate(ssl);
+  if(cert==NULL) handleOpenSSLFailure();
+  if(SSL_get_verify_result(ssl)!=X509_V_OK) handleOpenSSLFailure();
+  if(X509_check_host(cert, host, strlen(host), 0, NULL)!=1) handleOpenSSLFailure();
+  atexit(closeSSL);
 
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
@@ -239,22 +287,21 @@ int main(int argc, char *argv[])
   if(adc_a0==NULL)
   {
     fprintf(stderr, "Cannot init AIN0, try running as root or verify grove connection\n");
-    exit(1);
+    exit(2);
   }
 
   char idBuf[13];
   sprintf(idBuf, "ID=%s\n", id);
-  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to socket");
+  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to socket");//TODO
   checkForError(write(logfd, idBuf, strlen(idBuf)), "writing ID to log");
   generateReport(adc_a0);
-
 
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{socketfd,POLLIN,0}};
   char *parseBuf=malloc(sizeof(char));
   if(parseBuf==NULL)
   {
     fprintf(stderr, "Error malloc failed");
-    exit(1);
+    exit(2);
   }
   *parseBuf='\0';
   int parseLength=0;
@@ -274,7 +321,7 @@ int main(int argc, char *argv[])
       if(pollingArr[1].revents & POLLIN)
       {
         char readBuf[256];
-        int numRead=read(socketfd, readBuf, 255);
+        int numRead=read(socketfd, readBuf, 255);//TODO
         checkForError(numRead, "reading from socket");
         parseLength+=numRead;
         while(parseLength>=allocSize)
@@ -285,7 +332,7 @@ int main(int argc, char *argv[])
         if(parseBuf==NULL)
         {
           fprintf(stderr, "Error realloc failed");
-          exit(1);
+          exit(2);
         }
         strncat(parseBuf, readBuf, numRead);
         for(i=0; i<numRead; i++)
