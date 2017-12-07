@@ -61,6 +61,12 @@ void checkForError(int result, char *message)
   }
 }
 
+void handleOpenSSLFailure()
+{
+  fprintf(stderr, "Error using OpenSSL");
+  exit(2);
+}
+
 void printUsage(char *progName)
 {
   fprintf(stderr, "Usage: %s --log=FILE --id=NINE_DIGIT_ID --host=HOSTNAME PORT [--scale=F|C] [--period==N]\n", progName);
@@ -80,7 +86,7 @@ void shutdownProgram()
   struct tm *locTime=localtime(&rawtime);
   char writeBuf[50];
   sprintf(writeBuf, "%02d:%02d:%02d SHUTDOWN\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec);
-  checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");//TODO
+  if(SSL_write(ssl, writeBuf, strlen(writeBuf))<=0) handleOpenSSLFailure();
   checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   running=0;
 }
@@ -156,15 +162,9 @@ void generateReport(mraa_aio_context aioFd)
   sprintf(writeBuf, "%02d:%02d:%02d %.1f\n",locTime->tm_hour,locTime->tm_min,locTime->tm_sec, getTempReading(aioFd));
   if(stopped==0)
   {
-    checkForError(write(socketfd, writeBuf, strlen(writeBuf)),"writing to socket");//TODO
+    if(SSL_write(ssl, writeBuf, strlen(writeBuf))<=0) handleOpenSSLFailure();
     checkForError(write(logfd, writeBuf, strlen(writeBuf)), "writing to log");
   }
-}
-
-void handleOpenSSLFailure()
-{
-  fprintf(stderr, "Error using OpenSSL");
-  exit(2);
 }
 
 int main(int argc, char *argv[])
@@ -296,7 +296,7 @@ int main(int argc, char *argv[])
 
   char idBuf[13];
   sprintf(idBuf, "ID=%s\n", id);
-  checkForError(write(socketfd, idBuf, strlen(idBuf)), "writing ID to socket");//TODO
+  if(SSL_write(ssl, idBuf, strlen(idBuf))<=0) handleOpenSSLFailure();
   checkForError(write(logfd, idBuf, strlen(idBuf)), "writing ID to log");
   generateReport(adc_a0);
 
@@ -325,8 +325,8 @@ int main(int argc, char *argv[])
       if(pollingArr[1].revents & POLLIN)
       {
         char readBuf[256];
-        int numRead=read(socketfd, readBuf, 255);//TODO
-        checkForError(numRead, "reading from socket");
+        int numRead=SSL_read(ssl, readBuf, 255);
+        if(numRead<=0) handleOpenSSLFailure();
         parseLength+=numRead;
         while(parseLength>=allocSize)
         {
