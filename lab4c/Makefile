@@ -1,4 +1,4 @@
-CFLAGS=-lmraa -lm -Wall -Wextra
+CFLAGS=-lmraa -lm -lssl -lcrypto -Wall -Wextra
 
 default: lab4c_tcp lab4c_tls
 
