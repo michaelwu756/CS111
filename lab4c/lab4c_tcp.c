@@ -39,7 +39,7 @@ void checkForError(int result, char *message)
   if(result==-1)
   {
     fprintf(stderr, "Error %s: %s\n", message, strerror(errno));
-    exit(1);
+    exit(2);
   }
 }
 
@@ -210,9 +210,9 @@ int main(int argc, char *argv[])
   }
 
   struct addrinfo *rp;
-  for (rp = result; rp != NULL; rp = rp->ai_next) {
-    socketfd = socket(rp->ai_family, rp->ai_socktype,
-                 rp->ai_protocol);
+  for (rp = result; rp != NULL; rp = rp->ai_next)
+  {
+    socketfd = socket(rp->ai_family, rp->ai_socktype,rp->ai_protocol);
     if (socketfd == -1)
       continue;
 
@@ -224,7 +224,6 @@ int main(int argc, char *argv[])
 
   if(rp==NULL)
   {
-
     fprintf(stderr, "Error: could not connect\n");
     exit(2);
   }
@@ -239,7 +238,7 @@ int main(int argc, char *argv[])
   if(adc_a0==NULL)
   {
     fprintf(stderr, "Cannot init AIN0, try running as root or verify grove connection\n");
-    exit(1);
+    exit(2);
   }
 
   char idBuf[13];
@@ -254,7 +253,7 @@ int main(int argc, char *argv[])
   if(parseBuf==NULL)
   {
     fprintf(stderr, "Error malloc failed");
-    exit(1);
+    exit(2);
   }
   *parseBuf='\0';
   int parseLength=0;
@@ -285,7 +284,7 @@ int main(int argc, char *argv[])
         if(parseBuf==NULL)
         {
           fprintf(stderr, "Error realloc failed");
-          exit(1);
+          exit(2);
         }
         strncat(parseBuf, readBuf, numRead);
         for(i=0; i<numRead; i++)
