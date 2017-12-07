@@ -253,6 +253,8 @@ int main(int argc, char *argv[])
   }
   freeaddrinfo(result);
 
+  checkForError(fcntl(socketfd, F_SETFL, fcntl(socketfd, F_GETFL, 0) | O_NONBLOCK), "changing socket to nonblocking");
+
   ctx = NULL;
   ssl = NULL;
   X509_VERIFY_PARAM *param;
