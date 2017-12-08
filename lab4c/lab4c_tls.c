@@ -262,7 +262,6 @@ int main(int argc, char *argv[])
   if(method==NULL) handleOpenSSLFailure("getting method");
   ctx = SSL_CTX_new(method);
   if(ctx==NULL) handleOpenSSLFailure("creating context");
-  if(SSL_CTX_load_verify_locations(ctx, "lab4c_server.crt", NULL)!=1) handleOpenSSLFailure("loading certificate");
 
   ssl=SSL_new(ctx);
   if(ssl==NULL) handleOpenSSLFailure("making ssl");

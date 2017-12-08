@@ -1,3 +1,19 @@
 NAME: Michael Wu
 ID: 404751542
 EMAIL: cheeserules43@gmail.com
+
+This submission includes:
+
+lab4c_tcp.c: Source code that reads the temperature on this beaglebone device
+and generates reports to a tcp server. Requires a host, id, logfile, and a port
+number. See usage message for details.
+
+lab4c_tls.c: Source code that reads the temperature on this beaglebone device
+and generates reports to a tls server. Does not verify the server certificate
+with a certificate authority. Requires a host, id, logfile, and a port
+number. See usage message for details.
+
+Makefile: Makes this lab, targets include default, clean, and dist. make default
+compiles lab4c_tcp and lab4c_tls. make clean removes any generated files. make
+dist creates a tarball for submission. This project runs with openssl1.0.0
+headers and libraries.
