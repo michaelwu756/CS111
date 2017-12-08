@@ -247,7 +247,6 @@ int main(int argc, char *argv[])
   checkForError(write(logfd, idBuf, strlen(idBuf)), "writing ID to log");
   generateReport(adc_a0);
 
-
   struct pollfd pollingArr[2]={{timerfd,POLLIN,0},{socketfd,POLLIN,0}};
   char *parseBuf=malloc(sizeof(char));
   if(parseBuf==NULL)
