@@ -20,7 +20,6 @@
 #include<openssl/ssl.h>
 #include<openssl/evp.h>
 #include<openssl/err.h>
-#include<openssl/x509_vfy.h>
 const int B = 4275;
 const int R0 = 100000;
 

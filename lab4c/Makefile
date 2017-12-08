@@ -1,4 +1,4 @@
-CFLAGS=-lmraa -lm -lssl -lcrypto -Llib -Iinclude -Wall -Wextra
+CFLAGS=-lmraa -lm -lssl -lcrypto -Wall -Wextra
 
 default: lab4c_tcp lab4c_tls
 
@@ -13,5 +13,5 @@ lab4c_tcp lab4c_tls:
 clean:
 	rm -f lab4c_tcp lab4c_tls *.tar.gz
 
-dist: lab4c_tcp.c lab4c_tls.c Makefile README lib/* include/* lab4c_server.crt
+dist: lab4c_tcp.c lab4c_tls.c Makefile README lab4c_server.crt
 	tar -czf lab4c-404751542.tar.gz $^
