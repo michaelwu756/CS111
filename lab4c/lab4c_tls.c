@@ -63,7 +63,7 @@ void checkForError(int result, char *message)
 
 void handleOpenSSLFailure()
 {
-  fprintf(stderr, "Error using OpenSSL");
+  fprintf(stderr, "Error using OpenSSL\n");
   exit(2);
 }
 
@@ -255,34 +255,73 @@ int main(int argc, char *argv[])
 
   ctx = NULL;
   ssl = NULL;
-  X509_VERIFY_PARAM *param;
+  //X509_VERIFY_PARAM *param;
   SSL_library_init();
   SSL_load_error_strings();
   OpenSSL_add_all_algorithms();
 
+  printf("making context\n");
   const SSL_METHOD* method = SSLv23_method();
   if(method==NULL) handleOpenSSLFailure();
   ctx = SSL_CTX_new(method);
   if(ctx==NULL) handleOpenSSLFailure();
-  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
-  SSL_CTX_set_verify_depth(ctx, 4);
+  //  SSL_CTX_set_verify(ctx, SSL_VERIFY_PEER, NULL);
+  //SSL_CTX_set_verify_depth(ctx, 4);
   SSL_CTX_set_options(ctx, SSL_OP_NO_SSLv2 | SSL_OP_NO_SSLv3);
   if(SSL_CTX_load_verify_locations(ctx, "lab4c_server.crt", NULL)!=1) handleOpenSSLFailure();
 
+  printf("making ssl\n");
   ssl=SSL_new(ctx);
   if(ssl==NULL) handleOpenSSLFailure();
-  param = SSL_get0_param(ssl);
-  X509_VERIFY_PARAM_set_hostflags(param, 0);
-  X509_VERIFY_PARAM_set1_host(param, host, 0);
+  //param = SSL_get0_param(ssl);
+  //X509_VERIFY_PARAM_set_hostflags(param, 0);
+  //X509_VERIFY_PARAM_set1_host(param, host, 0);
   if(SSL_set_fd(ssl, socketfd)==-1) handleOpenSSLFailure();
-  if(SSL_set_tlsext_host_name(ssl, host)!=1) handleOpenSSLFailure();
-  if(SSL_connect(ssl)!=1) handleOpenSSLFailure();
-
-  X509* cert = SSL_get_peer_certificate(ssl);
+  //if(SSL_set_tlsext_host_name(ssl, host)!=1) handleOpenSSLFailure();
+  printf("connecting\n");
+  int ret = SSL_connect(ssl);
+  if(ret!=1)
+  {
+    printf("ret: %d\n", ret);
+    int err = SSL_get_error(ssl, ret);
+    printf("err: %d\n", err);
+    if(err&SSL_ERROR_NONE)
+      printf("error none\n");
+    if(err&SSL_ERROR_ZERO_RETURN)
+      printf("zero return\n");
+    if(err&SSL_ERROR_WANT_READ)
+      printf("want read\n");
+    if(err&SSL_ERROR_WANT_WRITE)
+      printf("want write\n");
+    if(err&SSL_ERROR_WANT_CONNECT)
+      printf("want connect\n");
+    if(err&SSL_ERROR_WANT_ACCEPT)
+      printf("want accept\n");
+    if(err&SSL_ERROR_WANT_X509_LOOKUP)
+      printf("want x509\n");
+    if(err&SSL_ERROR_SYSCALL)
+    {
+        printf("syscall\n");
+        printf(strerror(errno));
+        printf("\n");
+    }
+    if(err&SSL_ERROR_SSL)
+    {
+      printf("ssl error\n");
+      while(ERR_peek_error()!=0)
+      {
+        printf(ERR_error_string(ERR_get_error(), NULL));
+        printf("\n");
+      }
+    }
+    handleOpenSSLFailure();
+  }
+  printf("connected\n");
+  /*X509* cert = SSL_get_peer_certificate(ssl);
   if(cert==NULL) handleOpenSSLFailure();
   if(SSL_get_verify_result(ssl)!=X509_V_OK) handleOpenSSLFailure();
   atexit(closeSSL);
-
+  printf("got cert\n");*/
   timerfd=timerfd_create(CLOCK_MONOTONIC, 0);
   checkForError(timerfd, "creating timer");
   setTimerPeriod(timerfd, period);
